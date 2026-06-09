@@ -262,10 +262,10 @@ export async function getSongUrl(id, index, autoplay, isLocal) {
         lyric.value = null
         lyricsObjArr.value = null
         //获取本地歌词（已禁用）
-        // const localLyric = await getLocalLyric(songList.value[currentIndex.value].url)
-        // if(localLyric) {
-        //     lyric.value = {lrc:{lyric:localLyric}}
-        // }
+        const localLyric = await getLocalLyric(songList.value[currentIndex.value].url)
+        if(localLyric) {
+            lyric.value = {lrc:{lyric:localLyric}}
+        }
         if(!lyricShow.value && !widgetState.value) {
             lyricShow.value = true
             playerChangeSong.value = false
