@@ -6,6 +6,8 @@
   "author": "TTLLSSFF",
   "scripts": {
     "dev": "vite",
+    "dev:electron": "electron .",
+    "dev:all": "concurrently \"vite\" \"electron .\"",
     "build": "vite build",
     "preview": "vite preview",
     "start": "nodemon --exec electron . --watch ./ --ext .html",
@@ -36,6 +38,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^3.2.0",
+    "concurrently": "^8.0.0",
     "electron": "^21.2.0",
     "electron-builder": "^23.6.0",
     "nodemon": "^2.0.20",

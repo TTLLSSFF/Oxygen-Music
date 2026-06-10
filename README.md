@@ -1,6 +1,6 @@
 <br />
 <p align="center">
-  <a href="https://github.com/Kaidesuyo/Hydrogen-Music" target="blank">
+  <a href="https://github.com/TTLLSSFF/Oxygen-Music" target="blank">
     <img src="img/icon.png" alt="Logo" width="156" height="156">
   </a>
   <h2 align="center" style="font-weight: 600">Oxygen Music</h2>
@@ -14,12 +14,12 @@
 
 ## 📦️ 安装
 
-访问 [Releases](https://github.com/Kaidesuyo/Hydrogen-Music/releases)
+访问 [Releases](https://github.com/TTLLSSFF/Oxygen-Music/releases)
 页面下载安装包。
 
 ## 👷‍♂️ 打包客户端
 
-由于个人设备限制，只打包了Windows平台的安装包且并未适配macOs与Linux平台。
+由于个人设备限制，只打包了Windows平台的安装包且并未适配MacOS与Linux平台。
 如有可能，您可以在开发环境中自行适配。
 
 ```shell
