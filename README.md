@@ -42,6 +42,16 @@ npm run dev
 npm start
 ```
 
+或者
+```shell
+# 安装依赖
+npm install
+
+# 运行Vue服务和Electron客户端
+npm run dev:all
+```
+
+
 ## 📜 开源许可
 
 本项目仅供个人学习研究使用，禁止用于商业及非法用途。
