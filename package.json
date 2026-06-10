@@ -1,7 +1,7 @@
 {
   "name": "oxygenmusic",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.5.1",
   "main": "background.js",
   "author": "TTLLSSFF",
   "scripts": {
