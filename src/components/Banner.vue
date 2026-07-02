@@ -1,7 +1,8 @@
 <script setup>
-  import {  ref, onActivated } from 'vue'
+  import {  ref, onActivated, onMounted } from 'vue'
   import { onBeforeRouteLeave } from 'vue-router';
   import { getBanner } from '../api/other';
+  import { noticeOpen } from '../utils/dialog';
   const timer1 = ref(null)
   const timer2 = ref(null)
   const timer3 = ref(null)
@@ -12,14 +13,25 @@
   const bannerTimer1 = ref(false)
   const bannerTimer2 = ref(false)
   const bannerList = ref([{}])
-    //获取轮播图，0为pc端轮播图,此处选择的是ipad端
-
-    loadData(3)
+  const loading = ref(true)
 
     async function loadData(type) {
-        const bannerData = await getBanner(type)
-        bannerList.value = bannerData.banners
+        loading.value = true
+        try {
+            const bannerData = await getBanner(type)
+            if (bannerData && bannerData.banners) {
+                bannerList.value = bannerData.banners
+            }
+        } catch (error) {
+            noticeOpen("获取轮播图失败", 2)
+        } finally {
+            loading.value = false
+        }
     }
+
+    onMounted(() => {
+        loadData(3)
+    })
 
     onActivated(() => {
         bannerStart()

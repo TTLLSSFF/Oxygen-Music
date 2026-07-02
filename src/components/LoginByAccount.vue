@@ -18,14 +18,18 @@
   const dataCheckAnimaton = ref(null)
 
   onActivated(() => {
-    accountInput.value.focus()
+    if(accountInput.value) {
+      accountInput.value.focus()
+    }
   })
 
   const inputFocus = () => {
     accountNumber.value = ''
     typePassword.value = ''
     focusTimer.value = setTimeout(() => {
-      accountInput.value.focus()
+      if(accountInput.value) {
+        accountInput.value.focus()
+      }
       clearTimeout(focusTimer.value)
     }, 1);
   }
@@ -51,10 +55,6 @@
   }
    
   async function login() {
-    if(props.currentMode == 0 || props.currentMode == 1) {
-      noticeOpen('邮箱与手机登录暂时禁用，请扫码登录', 2)
-      return
-    }
     if(props.currentMode == 0) {
       //邮箱登录
       if(checkMail()) {
@@ -64,13 +64,19 @@
           md5_password: md5(typePassword.value)
         }
         loginAnimation.value = true
-        await loginByEmail(params).then(result => {
-          if(result.code == 200) {
+        try {
+          const result = await loginByEmail(params)
+          if(result && result.code == 200) {
             loginSuccess(result)
           } else {
+            const msg = result && result.message ? result.message : '登录失败'
+            noticeOpen(msg, 2)
             loginError()
           }
-        })
+        } catch(error) {
+          noticeOpen('邮箱登录失败，请检查网络或账号密码', 2)
+          loginError()
+        }
       }
     } else if(props.currentMode == 1) {
       //手机登录
@@ -82,13 +88,19 @@
           md5_password: md5(typePassword.value)
         }
         loginAnimation.value = true
-        await loginByPhone(params).then(result => {
-          if(result.code == 200) {
+        try {
+          const result = await loginByPhone(params)
+          if(result && result.code == 200) {
             loginSuccess(result)
           } else {
+            const msg = result && result.message ? result.message : '登录失败'
+            noticeOpen(msg, 2)
             loginError()
           }
-        })
+        } catch(error) {
+          noticeOpen('手机登录失败，请检查网络或账号密码', 2)
+          loginError()
+        }
       }
     }
   }

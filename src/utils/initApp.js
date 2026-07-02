@@ -8,6 +8,7 @@ import { usePlayerStore } from '../store/playerStore'
 import { useLocalStore } from '../store/localStore'
 import { storeToRefs } from 'pinia'
 import { insertCustomFontStyle } from './setFont'
+import { noticeOpen } from './dialog'
 
 const userStore = useUserStore(pinia)
 const playerStore = usePlayerStore()
@@ -16,54 +17,79 @@ const localSotre = useLocalStore()
 const { updateUser } = userStore
 
 export const initSettings = () => {
-    windowApi.getSettings().then(settings => {
-        quality.value = settings.music.level
-        lyricSize.value = settings.music.lyricSize
-        tlyricSize.value = settings.music.tlyricSize
-        rlyricSize.value = settings.music.rlyricSize
-        lyricInterludeTime.value = settings.music.lyricInterlude
-        localSotre.downloadedFolderSettings = settings.local.downloadFolder
-        localSotre.localFolderSettings = settings.local.localFolder
-        localSotre.quitApp = settings.other.quitApp
-        if (localSotre.downloadedFolderSettings && !localSotre.downloadedMusicFolder) {
-            scanMusic({ type: 'downloaded', refresh: false })
-        }
-        if (localSotre.localFolderSettings.length != 0 && !localSotre.localMusicFolder) {
-            scanMusic({ type: 'local', refresh: false })
-        }
-        if (!localSotre.downloadedFolderSettings && localSotre.downloadedMusicFolder) {
-            localSotre.downloadedMusicFolder = null
-            localSotre.downloadedFiles = null
-            windowApi.clearLocalMusicData('downloaded')
-        }
-        if (localSotre.localFolderSettings.length == 0 && localSotre.localMusicFolder) {
-            localSotre.localMusicFolder = null,
-                localSotre.localMusicList = null
-            localSotre.localMusicClassify = null
-            windowApi.clearLocalMusicData('local')
-        }
-        insertCustomFontStyle(settings.other.customFont)
+    return new Promise((resolve) => {
+        windowApi.getSettings().then(settings => {
+            if (settings) {
+                quality.value = settings.music.level
+                lyricSize.value = settings.music.lyricSize
+                tlyricSize.value = settings.music.tlyricSize
+                rlyricSize.value = settings.music.rlyricSize
+                lyricInterludeTime.value = settings.music.lyricInterlude
+                localSotre.downloadedFolderSettings = settings.local.downloadFolder
+                localSotre.localFolderSettings = settings.local.localFolder
+                localSotre.quitApp = settings.other.quitApp
+                if (localSotre.downloadedFolderSettings && !localSotre.downloadedMusicFolder) {
+                    scanMusic({ type: 'downloaded', refresh: false })
+                }
+                if (localSotre.localFolderSettings.length != 0 && !localSotre.localMusicFolder) {
+                    scanMusic({ type: 'local', refresh: false })
+                }
+                if (!localSotre.downloadedFolderSettings && localSotre.downloadedMusicFolder) {
+                    localSotre.downloadedMusicFolder = null
+                    localSotre.downloadedFiles = null
+                    windowApi.clearLocalMusicData('downloaded')
+                }
+                if (localSotre.localFolderSettings.length == 0 && localSotre.localMusicFolder) {
+                    localSotre.localMusicFolder = null
+                    localSotre.localMusicList = null
+                    localSotre.localMusicClassify = null
+                    windowApi.clearLocalMusicData('local')
+                }
+                insertCustomFontStyle(settings.other.customFont)
+            }
+            resolve()
+        }).catch(() => {
+            resolve()
+        })
     })
 }
+
 export const getUserLikelist = () => {
-    if (userStore.user.userId)
+    if (userStore.user && userStore.user.userId) {
         getLikelist(userStore.user.userId).then(result => {
-            userStore.likelist = result.ids
+            if (result && result.ids) {
+                userStore.likelist = result.ids
+            }
+        }).catch(() => {
+            userStore.likelist = []
         })
-    else {
+    } else {
         userStore.likelist = []
     }
 }
-//初始化
-export const init = () => {
-    initSettings()
+
+export const initUserInfo = () => {
+    return new Promise((resolve) => {
+        if (isLogin()) {
+            getUserProfile().then(result => {
+                if (result && result.profile) {
+                    updateUser(result.profile)
+                    getUserLikelist()
+                }
+                resolve()
+            }).catch(() => {
+                noticeOpen("获取用户信息失败", 2)
+                resolve()
+            })
+        } else {
+            window.localStorage.clear()
+            resolve()
+        }
+    })
+}
+
+export const init = async () => {
+    await initSettings()
     loadLastSong()
-    if (isLogin()) {
-        getUserProfile().then(result => {
-            updateUser(result.profile)
-            getUserLikelist()
-        })
-    } else {
-        window.localStorage.clear()
-    }
+    await initUserInfo()
 }

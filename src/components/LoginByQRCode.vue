@@ -5,6 +5,7 @@
   import { getQRcode, checkQRcodeStatus } from '../api/login'
   import { onBeforeRouteLeave } from 'vue-router';
   import { loginHandle } from '../utils/handle'
+  import { noticeOpen } from '../utils/dialog'
 
   const props = defineProps(['firstLoadMode'])
   const firstLoadMode = ref(props.firstLoadMode)
@@ -57,7 +58,12 @@
   })
 
   async function loadData() {
-      await getQRcode().then(result => {
+      try {
+        const result = await getQRcode()
+        if (!result || !result.data || !result.data.unikey) {
+            noticeOpen('获取二维码失败，请检查网络连接', 2)
+            return
+        }
         qrKey.value = result.data.unikey
         const loginUrl = `https://music.163.com/login?codekey=${qrKey.value}`
         let opts = {
@@ -71,16 +77,24 @@
             }
         };
         QRCode.toDataURL(loginUrl, opts, (err, url) => {
-            if(err) throw err
+            if(err) {
+                console.error('生成二维码图片失败:', err)
+                noticeOpen('生成二维码失败', 2)
+                return
+            }
             qrcodeImg.value = url
         })
         checkQR()
-      })
+      } catch(error) {
+        noticeOpen('获取二维码失败，请检查网络连接', 2)
+        console.error('获取二维码失败:', error)
+      }
   }
 
   const checkQRcode = () => {
     if(qrKey.value == null) return
     checkQRcodeStatus(qrKey.value).then(result => {
+        if(!result) return
         if(result.code === 800) {
             qrStatus.value = 800
             console.log("二维码过期")
@@ -97,6 +111,8 @@
             emits('jumpTo')
             console.log("授权登录成功")
         }
+    }).catch(error => {
+        console.error('检查二维码状态失败:', error)
     })
   }
 

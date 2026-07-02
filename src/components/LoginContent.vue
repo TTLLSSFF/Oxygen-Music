@@ -6,13 +6,13 @@
 
   const route = useRoute()
   const router = useRouter()
-  //通过网易云还是本地
-  const accountMode = ref(route.query.mode)
+  //通过网易云还是本地 0:网易云 1:本地
+  const accountMode = ref(Number(route.query.mode) || 0)
 
-  ///通过二维码还是账号
-  const loginMode = ref(route.query.mode)
+  ///通过二维码还是账号 0:二维码 1:账号密码
+  const loginMode = ref(Number(route.query.mode) || 0)
 
-  //当为账号登陆时当前选择的是邮箱还是手机 1:邮箱 2:手机
+  //当为账号登陆时当前选择的是邮箱还是手机 0:邮箱 1:手机
   const currentMode = ref(0)
 
   const loginByQR = ref(null)
@@ -21,31 +21,37 @@
 
   onActivated(() => {
     currentMode.value = 0
-    accountMode.value = route.query.mode
-    loginMode.value = route.query.mode
-    if(accountMode.value == 0) {
+    accountMode.value = Number(route.query.mode) || 0
+    loginMode.value = accountMode.value === 0 ? 0 : 1
+    if(accountMode.value === 0 && loginByQR.value) {
         loginByQR.value.checkQR()
     }
   })
 
-  if(accountMode.value == 0) loginMode.value = 0
+  if(accountMode.value === 0) loginMode.value = 0
   else loginMode.value = 1
 
   const changeMode =(mode) => {
-    if(mode != 2) {
+    if(mode !== 2) {
         loginMode.value = 1
         currentMode.value = mode
-        loginByAC.value.inputFocus()
+        if(loginByAC.value) {
+            loginByAC.value.inputFocus()
+        }
     } else {
-        loginByQR.value.checkQR()
+        if(loginByQR.value) {
+            loginByQR.value.checkQR()
+        }
         loginMode.value = 0
     }
-    if(accountMode.value == 0 && loginMode.value == 1) {
-        loginByQR.value.clearTimer()
+    if(accountMode.value === 0 && loginMode.value === 1) {
+        if(loginByQR.value) {
+            loginByQR.value.clearTimer()
+        }
     }
   }
   const register = () => {
-    if(accountMode.value == 0) windowApi.toRegister("https://music.163.com/")
+    if(accountMode.value === 0) windowApi.toRegister("https://music.163.com/")
     else console.log('注册本地帐号')
   }
   //登录成功跳转页面并销毁当前页面
@@ -70,23 +76,23 @@
             <span class="login-title">登录网易云账号</span>
         </div>
         
-        <LoginByQRCode class="qrcode-container" ref="loginByQR" @jumpTo="jumpTo" :firstLoadMode="loginMode" v-show="loginMode == 0 && accountMode == 0"></LoginByQRCode>
-        <LoginByAccount class="account-container" ref="loginByAC" @jumpTo="jumpTo" :currentMode="currentMode"  v-show="loginMode == 1"></LoginByAccount>
+        <LoginByQRCode class="qrcode-container" ref="loginByQR" @jumpTo="jumpTo" :firstLoadMode="loginMode" v-show="loginMode === 0 && accountMode === 0"></LoginByQRCode>
+        <LoginByAccount class="account-container" ref="loginByAC" @jumpTo="jumpTo" :currentMode="currentMode"  v-show="loginMode === 1"></LoginByAccount>
 
         <div class="login-other">
-            <span class="qrcode-tip" v-show="loginMode == 0 && accountMode == 0">打开网易云APP扫码登录</span>
-            <div class="login-method" v-show="loginMode == 0 && accountMode == 0">
+            <span class="qrcode-tip" v-show="loginMode === 0 && accountMode === 0">打开网易云APP扫码登录</span>
+            <div class="login-method" v-show="loginMode === 0 && accountMode === 0">
                 <span class="login-mail" @click="changeMode(0)">邮箱登录</span>
                 <span class="separation">|</span>
                 <span class="login-phone" @click="changeMode(1)">手机登录</span>
             </div>
-            <div class="login-method" v-show="loginMode == 1">
-                <span class="login-mail" @click="changeMode(0)" v-show="!currentMode == 0">邮箱登录</span>
-                <span class="login-phone" @click="changeMode(1)" v-show="!currentMode == 1">手机登录</span>
-                <span class="separation" v-show="accountMode == 0">|</span>
-                <span class="login-qr" @click="changeMode(2)" v-show="accountMode == 0">二维码登录</span>
+            <div class="login-method" v-show="loginMode === 1">
+                <span class="login-mail" @click="changeMode(0)" v-show="currentMode !== 0">邮箱登录</span>
+                <span class="login-phone" @click="changeMode(1)" v-show="currentMode !== 1">手机登录</span>
+                <span class="separation" v-show="accountMode === 0">|</span>
+                <span class="login-qr" @click="changeMode(2)" v-show="accountMode === 0">二维码登录</span>
             </div>
-            <div class="to-register" v-show="loginMode == 1">
+            <div class="to-register" v-show="loginMode === 1">
                 <span @click="register()">没有账号？去注册</span>
             </div>
         </div>

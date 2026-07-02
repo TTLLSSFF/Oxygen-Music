@@ -32,7 +32,7 @@ export function loadLastSong() {
                 songList.value = list.songList
                 shuffledList.value = list.shuffledList
             }
-            if(songList.value) {
+            if(songList.value && songList.value.length > 0 && currentIndex.value >= 0 && currentIndex.value < songList.value.length) {
                 if(songList.value[currentIndex.value].type == 'local') getSongUrl(songList.value[currentIndex.value].id, currentIndex.value, false, true)
                 else getSongUrl(songList.value[currentIndex.value].id, currentIndex.value, false, false)
                 if(musicVideo.value) loadMusicVideo(songList.value[currentIndex.value].id)

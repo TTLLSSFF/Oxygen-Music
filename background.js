@@ -27,8 +27,8 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
     }
 })
 
-app.whenReady().then(() => {
-    createWindow()
+app.whenReady().then(async () => {
+    await createWindow()
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
@@ -43,7 +43,7 @@ app.on('will-quit', () => {
     globalShortcut.unregisterAll()
   })
 }
-const createWindow = () => {
+const createWindow = async () => {
     process.env.DIST = path.join(__dirname, './')
     const indexHtml = path.join(process.env.DIST, 'dist/index.html')
     const winstate = new Winstate({
@@ -68,6 +68,14 @@ const createWindow = () => {
         }
     })
     myWindow = win
+
+    // 先启动API服务，确保前端请求时服务已就绪
+    try {
+        await startNeteaseMusicApi()
+    } catch(error) {
+        console.error('启动网易云音乐API服务失败:', error)
+    }
+
     if(process.resourcesPath.indexOf('\\node_modules\\') != -1)
         win.loadURL('http://localhost:5173/')
     else
@@ -92,8 +100,6 @@ const createWindow = () => {
             win.webContents.send('player-save')
         }
     })
-    //api初始化
-    startNeteaseMusicApi()
     //ipcMain初始化
     IpcMainEvent(win, app)
     MusicDownload(win)
