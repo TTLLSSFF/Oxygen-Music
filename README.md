@@ -61,7 +61,7 @@ npm run dev:all
 ## 灵感来源
 
 网易云音乐API：[Binaryify/NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi)<br />
-网易云音乐API Enhanced：[Binaryify/NeteaseCloudMusicApiEnhanced](https://github.com/Binaryify/NeteaseCloudMusicApiEnhanced)<br />
+网易云音乐API Enhanced：[NeteaseCloudMusicApiEnhanced/api-enhanced](https://github.com/Binaryify/NeteaseCloudMusicApiEnhanced)<br />
 哔哩哔哩API：[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)
 
 - [qier222/YesPlayMusic](https://github.com/qier222/YesPlayMusic)
