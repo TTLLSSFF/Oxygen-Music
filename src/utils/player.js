@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { noticeOpen } from './dialog'
 import { checkMusic, getMusicUrl, likeMusic, getLyric } from '../api/song'
 import { getLikelist } from '../api/user'
+import { getIntelligenceList } from '../api/playlist'
 import { useUserStore } from '../store/userStore'
 import { usePlayerStore } from '../store/playerStore'
 import { useLibraryStore } from '../store/libraryStore'
@@ -24,6 +25,7 @@ let loadLast = true
 let playModeOne = false //为true代表顺序播放已全部结束
 let currentTiming = null
 let videoCheckInterval = null
+let heartModeOriginal = null //心动模式下保存的原始播放列表状态
 
 export function loadLastSong() {
     if(loadLast) {
@@ -60,6 +62,7 @@ export function play(url, autoplay) {
         },
         onend: function() {
             clearInterval(musicProgress)
+            if(playMode.value == 4) { playHeartModeNext();return } //心动模式
             if(playMode.value == 0 && currentIndex.value < songList.value.length - 1) { playNext();return } //顺序播放
             if(playMode.value == 0 && currentIndex.value == songList.value.length - 1) { playing.value = false;playModeOne = true;windowApi.playOrPauseMusicCheck(playing.value);return } //顺序播放结束暂停状态
             if(playMode.value == 1) { playNext();return } //列表循环
@@ -326,6 +329,12 @@ export function pauseMusic() {
 }
 
 export function playLast() {
+    if(playMode.value == 4) {
+        let index = currentIndex.value - 1
+        if(index < 0) index = songList.value.length - 1
+        addSong(songList.value[index].id, index, true)
+        return
+    }
     let id = null
     let index = null
     if(playMode.value != 3) {
@@ -349,6 +358,7 @@ export function playLast() {
     addSong(id, index, true)
 }
 export function playNext() {
+    if(playMode.value == 4) { playHeartModeNext();return }
     let id = null
     let index = null
     if(playMode.value != 3) {
@@ -398,9 +408,14 @@ export function changeProgressByDragEnd(toTime) {
     if(playing.value) startProgress()
 }
 // ------------
-export function changePlayMode() {
-    if(playMode.value != 3) playMode.value += 1
+export async function changePlayMode() {
+    const prevMode = playMode.value
+    if(playMode.value != 4) playMode.value += 1
     else playMode.value = 0
+
+    if(prevMode == 4 && playMode.value != 4) {
+        exitHeartMode()
+    }
 
     if(playMode.value == 2) currentMusic.value.loop(true) //循环模式
     else currentMusic.value.loop(false)
@@ -410,10 +425,18 @@ export function changePlayMode() {
         shuffledList.value = null
         shuffleIndex.value = null
     }
+    if(playMode.value == 4) {
+        await enterHeartMode()
+    }
     windowApi.changeTrayMusicPlaymode(playMode.value)
 }
 
 export function playAll(listType, list) {
+    if(playMode.value == 4) {
+        exitHeartMode()
+        playMode.value = 0
+        windowApi.changeTrayMusicPlaymode(0)
+    }
     if(playMode.value == 3) {
         addToList(listType, list)
         setShuffledList(true)
@@ -446,6 +469,83 @@ function shuffle(arr, isplayAll) { // 随机打乱数组
   }
 function getRandomInt(min, max) { // 获取min到max的一个随机数，包含min和max本身
     return Math.floor(Math.random() * (max - min + 1) + min)
+}
+
+async function enterHeartMode() {
+    if(!listInfo.value || !listInfo.value.id || listInfo.value.id == 'local' || listInfo.value.id == 'rec') {
+        noticeOpen('心动模式需要正在播放歌单', 2)
+        playMode.value = 0
+        return
+    }
+    if(!songList.value || songList.value.length == 0) {
+        noticeOpen('心动模式需要正在播放歌单', 2)
+        playMode.value = 0
+        return
+    }
+    const seedId = songId.value || songList.value[0].id
+    const playlistId = listInfo.value.id
+    try {
+        const result = await getIntelligenceList({ id: seedId, pid: playlistId })
+        if(result.data && result.data.length > 0) {
+            const newList = result.data.map(item => item.songInfo).filter(Boolean)
+            if(newList.length > 0) {
+                heartModeOriginal = {
+                    songList: songList.value,
+                    listInfo: listInfo.value,
+                    currentIndex: currentIndex.value,
+                    songId: songId.value,
+                    shuffledList: shuffledList.value,
+                    shuffleIndex: shuffleIndex.value,
+                }
+                listInfo.value = { id: playlistId, type: 'heart' }
+                songList.value = newList
+                addSong(songList.value[0].id, 0, true)
+                return
+            }
+        }
+        noticeOpen('心动模式暂不可用', 2)
+        playMode.value = 0
+    } catch(error) {
+        noticeOpen('心动模式加载失败', 2)
+        playMode.value = 0
+    }
+}
+
+function exitHeartMode() {
+    if(!heartModeOriginal) return
+    songList.value = heartModeOriginal.songList
+    listInfo.value = heartModeOriginal.listInfo
+    currentIndex.value = heartModeOriginal.currentIndex
+    songId.value = heartModeOriginal.songId
+    shuffledList.value = heartModeOriginal.shuffledList
+    shuffleIndex.value = heartModeOriginal.shuffleIndex
+    heartModeOriginal = null
+}
+
+async function playHeartModeNext() {
+    if(!listInfo.value || listInfo.value.type != 'heart') return
+    if(!songList.value || songList.value.length == 0) return
+    const currentSong = songList.value[currentIndex.value]
+    if(!currentSong) return
+    try {
+        const result = await getIntelligenceList({ id: currentSong.id, pid: listInfo.value.id })
+        if(result.data && result.data.length > 0) {
+            const newList = result.data.map(item => item.songInfo).filter(Boolean)
+            if(newList.length > 0) {
+                songList.value = newList
+                currentIndex.value = 0
+                addSong(songList.value[0].id, 0, true)
+                return
+            }
+        }
+        exitHeartMode()
+        playMode.value = 0
+        playNext()
+    } catch(error) {
+        exitHeartMode()
+        playMode.value = 0
+        playNext()
+    }
 }
 
 export function likeSong(like) {
@@ -590,8 +690,12 @@ windowApi.lastOrNextMusic((event, option) => {
     if(option == 'last') playLast()
     else if(option == 'next') playNext()
 })
-windowApi.changeMusicPlaymode((event, mode) => {
+windowApi.changeMusicPlaymode(async (event, mode) => {
+    const prevMode = playMode.value
     if(playMode.value != mode) playMode.value = mode
+    if(prevMode == 4 && playMode.value != 4) {
+        exitHeartMode()
+    }
     if(playMode.value == 2) currentMusic.value.loop(true) //循环模式
     else currentMusic.value.loop(false)
     if(playMode.value == 3) {
@@ -600,6 +704,10 @@ windowApi.changeMusicPlaymode((event, mode) => {
         shuffledList.value = null
         shuffleIndex.value = null
     }
+    if(playMode.value == 4) {
+        await enterHeartMode()
+    }
+    windowApi.changeTrayMusicPlaymode(playMode.value)
 })
 windowApi.volumeUp(() => {
     if(volume.value + 0.1 < 1) volume.value += 0.1

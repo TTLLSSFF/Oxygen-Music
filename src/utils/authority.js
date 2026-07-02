@@ -3,16 +3,22 @@ import Cookies from "js-cookie";
 export function setCookies(data, type) {
   console.log(data)
   if(type == 'account') {
-    const cookies = data.cookie.split(';;')
-    cookies.map(cookie => {
+    const rawCookie = data.cookie || ''
+    const cookies = rawCookie.split(';;')
+    cookies.forEach(cookie => {
+      if(!cookie.trim()) return
       document.cookie = cookie;
       const temCookie = cookie.split(';')[0].split('=');
-      localStorage.setItem('cookie:' + temCookie[0], temCookie[1])
+      if(temCookie.length >= 2) {
+        localStorage.setItem('cookie:' + temCookie[0], temCookie[1])
+      }
     });
   }
   if(type == 'qr') {
-    const cookies = data.cookie.split(';')
-    cookies.map(cookie => {
+    const rawCookie = data.cookie || ''
+    const cookies = rawCookie.split(';')
+    cookies.forEach(cookie => {
+      if(!cookie.trim()) return
       const temCookie = cookie.split('=');
       if(temCookie[0] == 'MUSIC_U' || temCookie[0] == 'MUSIC_A_T' || temCookie[0] == 'MUSIC_R_T') {
         document.cookie = cookie;

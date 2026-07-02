@@ -73,7 +73,7 @@ const createWindow = async () => {
     try {
         await startNeteaseMusicApi()
     } catch(error) {
-        console.error('启动网易云音乐API服务失败:', error)
+        console.error('启动网易云音乐 API Enhanced 服务失败:', error)
     }
 
     if(process.resourcesPath.indexOf('\\node_modules\\') != -1)

@@ -3,7 +3,7 @@
   import DataCheckAnimaton from './DataCheckAnimaton.vue';
   import md5 from 'js-md5';
   import { noticeOpen } from '../utils/dialog';
-  import { loginByEmail, loginByPhone} from '../api/login'
+  import { loginByEmail, loginByPhone, sendCaptcha } from '../api/login'
   import { loginHandle } from '../utils/handle'
 
   const props = defineProps(['currentMode'])
@@ -11,6 +11,9 @@
   const countrycode = ref('+86')
   const accountNumber = ref('')
   const typePassword = ref('')
+  const captchaCode = ref('')
+  const captchaCountdown = ref(0)
+  const captchaTimer = ref(null)
   const focusTimer = ref(null)
   const emits = defineEmits(['jumpTo'])
 
@@ -48,8 +51,8 @@
     }
   }
   const checkPhone = () => {
-    if(countrycode.value === '' || accountNumber.value === '' || typePassword.value === '') {
-      noticeOpen("请输入正确的手机号或密码！", 2)
+    if(countrycode.value === '' || accountNumber.value === '') {
+      noticeOpen("请输入正确的手机号！", 2)
       return false
     } else return true
   }
@@ -83,9 +86,17 @@
       if(checkPhone()) {
         let params = {
           phone: accountNumber.value.replace(/\s/g, ''),
-          password: 'none',
-          countrycode: countrycode.value.replace('+', '').replace(/\s/g, ''),
-          md5_password: md5(typePassword.value)
+          countrycode: countrycode.value.replace('+', '').replace(/\s/g, '')
+        }
+        if(captchaCode.value.trim()) {
+          params.captcha = captchaCode.value.trim()
+        } else {
+          if(typePassword.value === '') {
+            noticeOpen("请输入密码或验证码！", 2)
+            return
+          }
+          params.password = 'none'
+          params.md5_password = md5(typePassword.value)
         }
         loginAnimation.value = true
         try {
@@ -102,6 +113,32 @@
           loginError()
         }
       }
+    }
+  }
+
+  async function sendPhoneCaptcha() {
+    if(!checkPhone()) return
+    try {
+      const result = await sendCaptcha({
+        phone: accountNumber.value.replace(/\s/g, ''),
+        ctcode: countrycode.value.replace('+', '').replace(/\s/g, '')
+      })
+      if(result && result.code == 200) {
+        noticeOpen('验证码已发送', 2)
+        captchaCountdown.value = 60
+        captchaTimer.value = setInterval(() => {
+          captchaCountdown.value--
+          if(captchaCountdown.value <= 0) {
+            clearInterval(captchaTimer.value)
+            captchaTimer.value = null
+          }
+        }, 1000)
+      } else {
+        const msg = result && result.message ? result.message : '验证码发送失败'
+        noticeOpen(msg, 2)
+      }
+    } catch(error) {
+      noticeOpen('验证码发送失败，请检查网络或手机号', 2)
     }
   }
 
@@ -147,6 +184,13 @@
         <div class="forget-password">
           <div class="forget-title">您忘记了密码？</div>
           <div class="password-line" :class="{'login-animation': loginAnimation}"></div>
+        </div>
+      </div>
+      <div class="captcha-input" v-show="props.currentMode == 1">
+        <label for="captcha">验证码：</label>
+        <input class="captcha-code" :class="{'login-animation': loginAnimation}" type="text" name="captcha" v-model="captchaCode" spellcheck="false" placeholder="选填，可密码登录">
+        <div class="captcha-send" :class="{'captcha-send-disabled': captchaCountdown > 0}" @click="sendPhoneCaptcha()">
+          {{captchaCountdown > 0 ? captchaCountdown + 's' : '获取验证码'}}
         </div>
       </div>
       <div class="animation">
@@ -239,6 +283,45 @@
             width: 33vh;
             height: 0.5px;
           }
+        }
+      }
+      .captcha-input{
+        margin-top: 4vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        label{
+          font: 2.2vh SourceHanSansCN-Bold;
+          color: black;
+        }
+        .captcha-code{
+          width: 16vh;
+          font-size: 2.2vh;
+          color: black;
+          font-style: italic;
+          border: none;
+          border-bottom: 0.5px solid black;
+          background: none;
+          outline: none;
+          text-align: center;
+        }
+        .captcha-send{
+          margin-left: 1.5vh;
+          padding: 0.6vh 1.2vh;
+          font: 1.6vh SourceHanSansCN-Bold;
+          color: black;
+          border: 1px solid black;
+          transition: 0.2s;
+          white-space: nowrap;
+          &:hover{
+            cursor: pointer;
+            background-color: black;
+            color: white;
+          }
+        }
+        .captcha-send-disabled{
+          opacity: 0.5;
+          pointer-events: none;
         }
       }
       .animation{

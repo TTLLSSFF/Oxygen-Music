@@ -85,11 +85,12 @@ export function subPlaylist(params) {
     });
 }
 
+
 /**
  * 说明 : 调用后可获取歌单详情动态部分,如评论数,是否收藏,播放数
  * 必选参数 : id : 歌单 id
- * @param {*} params 
- * @returns 
+ * @param {*} id
+ * @returns
  */
 export function playlistDynamic(id) {
     return request({
@@ -97,6 +98,23 @@ export function playlistDynamic(id) {
       method: 'get',
       params: {
         id: id,
+        timestamp: new Date().getTime(),
+      }
+    });
+}
+
+/**
+ * 说明 : 调用此接口 , 可获取心动模式播放列表
+ * 必选参数 : id : 歌曲 id, pid : 歌单 id
+ * @param {*} params
+ * @returns
+ */
+export function getIntelligenceList(params) {
+    return request({
+      url: '/playmode/intelligence/list',
+      method: 'get',
+      params: {
+        ...params,
         timestamp: new Date().getTime(),
       }
     });
