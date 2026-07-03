@@ -10,6 +10,7 @@ import { useUserStore } from '../store/userStore';
 import { usePlayerStore } from '../store/playerStore';
 import { insertCustomFontStyle } from '../utils/setFont';
 import Selector from '../components/Selector.vue'
+import { version } from '../../package.json'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -498,7 +499,7 @@ const setCustomFont = () => {
                 <div class="app-icon">
                     <img src="../assets/icon/icon.ico" alt="">
                 </div>
-                <div class="version">V0.6.0</div>
+                <div class="version">V{{ version }}</div>
                 <div class="app-author" @click="toGithub()">Made by Kaidesuyo</div>
             </div>
         </div>
