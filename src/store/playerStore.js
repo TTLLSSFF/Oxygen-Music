@@ -9,7 +9,7 @@ export const usePlayerStore = defineStore('playerStore', {
             progress: 0,//进度条
             volume: 0.3,//音量
             // volumeBeforeMuted: 0,//静音前音量
-            playMode: 0,//0为顺序播放，1为列表循环，2为单曲循环，3为随机播放，4为心动模式
+            playMode: 0,//0为顺序播放，1为列表循环，2为单曲循环，3为随机播放
             listInfo: null,
             songList: null,//播放列表
             shuffledList: null,//随机播放列表

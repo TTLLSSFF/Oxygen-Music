@@ -5,6 +5,7 @@
   import { noticeOpen } from "../utils/dialog";
   import { isLogin } from '../utils/authority'
   import { useUserStore } from '../store/userStore';
+  import { toggleHeartMode } from '../utils/player'
 
   const router  =useRouter()
   const userStore = useUserStore()
@@ -46,6 +47,7 @@
                 <svg v-else t="1672136404205" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5403" width="200" height="200"><path d="M511.997 551.041c-218.044 0-399.92 168.61-441.722 392.645l883.45-0.439C911.607 719.432 729.83 551.041 511.997 551.041zM266.597 305.64c0 135.532 109.868 245.401 245.403 245.401 135.53 0 245.403-109.87 245.403-245.4C757.403 170.105 647.53 60.235 512 60.235c-135.535 0-245.403 109.87-245.403 245.406z" fill="#2c2c2c" p-id="5404" data-spm-anchor-id="a313x.7781069.0.i5" class="selected"></path></svg>
                 <div class="img-mask"></div>
               </div>
+              <svg t="1680000000000" @click="toggleHeartMode()" class="icon heart-mode-icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="200" height="200"><path d="M512 890.9L142.8 521.7C77.3 456.2 77.3 349.4 142.8 283.9s165.8-65.5 231.3 0L512 421.8l137.9-137.9c65.5-65.5 172.3-65.5 237.8 0s65.5 172.3 0 237.8L512 890.9z" fill="none" stroke="#000000" stroke-width="64" stroke-linejoin="round"/></svg>
               <transition name="app-option" @after-enter="onAfterEnter" @after-leave="onAfterLeave">
                 <div class="app-option" :class="{ 'app-option-active': isActive }" v-show="userStore.appOptionShow">
                   <div class="option" @click="toSettings()">设置</div>
@@ -118,16 +120,16 @@
       .user{
         position: absolute;
         top: 50%;
-        right: -35px;
+        right: -65px;
         transform: translateY(-50%);
         z-index: 999;
         .user-container{
-          width: 25px;
-          height: 25px;
+          display: flex;
+          align-items: center;
           position: relative;
           .user-head{
-            width: 100%;
-            height: 100%;
+            width: 25px;
+            height: 25px;
             border: 1px solid rgb(0, 0, 0, 0.6);
             border-radius: 50%;
             overflow: hidden;
@@ -155,6 +157,12 @@
                 opacity: 1;
               }
             }
+          }
+          .heart-mode-icon{
+            width: 22px;
+            height: 22px;
+            margin-left: 6px;
+            cursor: pointer;
           }
           .app-option{
             padding: 0;
@@ -218,7 +226,7 @@
       .user{
         width: 30px;
         position: absolute;
-        left: 365px;
+        left: 335px;
         transform: translateY(-55%);
         z-index: 999;
       }

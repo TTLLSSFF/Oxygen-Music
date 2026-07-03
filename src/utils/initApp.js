@@ -47,8 +47,19 @@ export const initSettings = () => {
                 }
                 insertCustomFontStyle(settings.other.customFont)
             }
+            // 设置未读取到配置时给默认值，避免 Web 模式下空值导致计算异常
+            quality.value = quality.value || 'standard'
+            lyricSize.value = lyricSize.value || '20'
+            tlyricSize.value = tlyricSize.value || '14'
+            rlyricSize.value = rlyricSize.value || '12'
+            lyricInterludeTime.value = lyricInterludeTime.value || 13
             resolve()
         }).catch(() => {
+            quality.value = quality.value || 'standard'
+            lyricSize.value = lyricSize.value || '20'
+            tlyricSize.value = tlyricSize.value || '14'
+            rlyricSize.value = rlyricSize.value || '12'
+            lyricInterludeTime.value = lyricInterludeTime.value || 13
             resolve()
         })
     })

@@ -67,6 +67,9 @@ function changeMusicPlaymode(callback) {
 function changeTrayMusicPlaymode(mode) {
     ipcRenderer.send('music-playmode-tray-change', mode)
 }
+function changeHeartMode(callback) {
+    ipcRenderer.on('music-heartmode-control', callback)
+}
 function volumeUp(callback) {
     ipcRenderer.on('music-volume-up', callback)
 }
@@ -136,6 +139,7 @@ contextBridge.exposeInMainWorld('windowApi', {
     lastOrNextMusic,
     changeMusicPlaymode,
     changeTrayMusicPlaymode,
+    changeHeartMode,
     volumeUp,
     volumeDown,
     musicProcessControl,

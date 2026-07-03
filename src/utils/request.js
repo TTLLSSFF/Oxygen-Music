@@ -7,8 +7,10 @@ const libraryStore = useLibraryStore(pinia)
 
 import { noticeOpen } from "./dialog";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:36530'
+
 const request = axios.create({
-    baseURL: 'http://localhost:36530',
+    baseURL: API_BASE_URL,
     withCredentials: true,
     timeout: 15000,
 });
@@ -17,24 +19,32 @@ let apiReady = false;
 let pendingRequests = [];
 let checkApiTimer = null;
 
+const setApiReady = () => {
+    if (!apiReady) {
+        apiReady = true;
+        if (checkApiTimer) {
+            clearInterval(checkApiTimer);
+            checkApiTimer = null;
+        }
+        const requests = pendingRequests.slice();
+        pendingRequests = [];
+        requests.forEach(({ resolve, config }) => {
+            resolve(config);
+        });
+    }
+}
+
 const checkApiReady = () => {
-    axios.get('http://localhost:36530/', { timeout: 2000 })
-        .then(() => {
-            if (!apiReady) {
-                apiReady = true;
-                if (checkApiTimer) {
-                    clearInterval(checkApiTimer);
-                    checkApiTimer = null;
-                }
-                const requests = pendingRequests.slice();
-                pendingRequests = [];
-                requests.forEach(({ resolve, config }) => {
-                    resolve(config);
-                });
+    axios.get(API_BASE_URL, { timeout: 2000 })
+        .then(setApiReady)
+        .catch((error) => {
+            // 只要服务端有响应（即使是 404/500）也视为已就绪，
+            // 避免因为根路径返回非 2xx 而一直阻塞请求。
+            if (error.response) {
+                setApiReady();
+            } else {
+                apiReady = false;
             }
-        })
-        .catch(() => {
-            apiReady = false;
         });
 };
 

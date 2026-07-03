@@ -99,14 +99,13 @@ module.exports = function InitTray(win, app, iconPath) {
                             win.webContents.send('music-playmode-control', 3)
                         }
                     },
-                    {
-                        label: '心动模式',
-                        type: 'radio',
-                        click: () => {
-                            win.webContents.send('music-playmode-control', 4)
-                        }
-                    },
                 ]
+            },
+            {
+                label: '心动模式',
+                click: () => {
+                    win.webContents.send('music-heartmode-control')
+                }
             },
             { 
                 label: '退出',
@@ -121,10 +120,10 @@ module.exports = function InitTray(win, app, iconPath) {
             win.show();
         });
         ipcMain.on('music-playmode-tray-change', (e, mode) => {
-            for(let i = 0; i < 5; i++) {
+            for(let i = 0; i < 4; i++) {
                 contextMenu.items[4].submenu.items[i].checked = false
             }
-            if(mode >= 0 && mode < 5) {
+            if(mode >= 0 && mode < 4) {
                 contextMenu.items[4].submenu.items[mode].checked = true
             }
         })

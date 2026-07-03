@@ -1,19 +1,24 @@
 {
   "name": "oxygenmusic",
   "private": true,
-  "version": "0.5.4",
+  "version": "0.6.0",
   "main": "background.js",
   "author": "TTLLSSFF",
   "scripts": {
     "dev": "vite",
     "dev:electron": "electron .",
     "dev:all": "concurrently \"vite\" \"electron .\"",
+    "dev:web": "concurrently \"node -e \\\"require('./src/electron/services')()\\\"\" \"vite --mode web\"",
     "build": "vite build",
+    "build:web": "vite build --mode web",
     "preview": "vite preview",
     "start": "nodemon --exec electron . --watch ./ --ext .html",
-    "dist": "vite build && electron-builder -p always"
+    "dist": "vite build && electron-builder -p always",
+    "serve": "serve -s dist -l 30000",
+    "serve:web": "node web-server.js"
   },
   "dependencies": {
+    "@neteasecloudmusicapienhanced/api": "^4.36.1",
     "axios": "^1.2.0",
     "dayjs": "^1.11.6",
     "electron-store": "^8.1.0",
@@ -25,7 +30,6 @@
     "js-md5": "^0.7.3",
     "music-metadata": "^7.13.0",
     "nanoid": "^3.3.4",
-    "@neteasecloudmusicapienhanced/api": "^4.36.1",
     "normalize.css": "^8.0.1",
     "pinia": "^2.0.23",
     "pinia-plugin-persistedstate": "^3.0.1",
@@ -43,6 +47,7 @@
     "electron-builder": "^23.6.0",
     "nodemon": "^2.0.20",
     "sass": "^1.56.1",
+    "serve": "^14.2.6",
     "vite": "^3.2.0"
   },
   "build": {
