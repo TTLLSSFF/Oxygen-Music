@@ -23,6 +23,8 @@
 如有可能，您可以在开发环境中自行适配。
 
 ```shell
+npm run build
+
 # 打包
 npm run dist
 ```
@@ -34,6 +36,8 @@ npm run dist
 ```shell
 # 安装依赖
 npm install
+
+npm run build
 
 # 运行Vue服务
 npm run dev
@@ -47,12 +51,16 @@ npm start
 # 安装依赖
 npm install
 
+npm run build
+
 # 运行Vue服务和Electron客户端
 npm run dev:all
 ```
 
 当然也可以运行网页版本
 ```shell
+npm run build
+
 # 运行Vue服务
 npm run serve:web
 `````
