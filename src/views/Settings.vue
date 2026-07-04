@@ -500,7 +500,7 @@ const setCustomFont = () => {
                     <img src="../assets/icon/icon.ico" alt="">
                 </div>
                 <div class="version">V{{ version }}</div>
-                <div class="app-author" @click="toGithub()">Made by Kaidesuyo</div>
+                <div class="app-author" @click="toGithub()">Made by Kaidesuyo/TTLLSSFF</div>
             </div>
         </div>
     </div>
