@@ -406,7 +406,7 @@ const setCustomFont = () => {
                             <div class="option-name">本地目录</div>
                             <div class="local-folder">
                                 <div class="selected-local-folder-item">
-                                    <div class="selected-folder" :title="item" @contextmenu="deleteLocalFolder(index)"
+                                    <div class="selected-folder" :title="item" @contextmenu.prevent="deleteLocalFolder(index)"
                                         v-for="(item, index) in localFolder">{{ item ? item : '请添加' }}</div>
                                     <div class="tip">您可以同时添加多个目录,右键移除您不需要的目录。数据量过大时需要一定扫描时间,请稍等。</div>
                                 </div>
