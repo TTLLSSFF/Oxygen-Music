@@ -14,6 +14,8 @@
   import { usePlayerStore } from './store/playerStore'
   import { useOtherStore } from './store/otherStore'
 
+  const isWeb = import.meta.env.MODE === 'web'
+
   const playerStore = usePlayerStore()
   const otherStore = useOtherStore()
 
@@ -33,7 +35,7 @@
     <Title class="widget-title"></Title>
     <SearchInput class="widget-search"></SearchInput>
   </div>
-  <div class="dragBar">
+  <div class="dragBar" v-if="!isWeb">
     <WindowControl class="window-control"></WindowControl>
   </div>
   <Transition name="widget">
