@@ -51,6 +51,13 @@ npm install
 npm run dev:all
 ```
 
+当然也可以运行网页版本
+```shell
+# 运行Vue服务
+npm run serve:web
+`````
+
+
 
 ## 📜 开源许可
 
