@@ -50,7 +50,7 @@ export async function getUserPlaylist(params = {}) {
       name: '我喜欢',
       coverImgUrl: qqAvatarUrl(uin, 100),
       picUrl: qqAvatarUrl(uin, 100),
-      trackCount: liked.ids?.length || liked.songs?.length || 0,
+      trackCount: liked.count || 0,
       creator: { nickname: session.nick || session.nickname || uin, userId: uin },
       followed: false,
       type: 'playlist',
@@ -178,60 +178,44 @@ export async function logout() {
 export async function getLikelist(uid) {
   if (!isLogin()) {
     reportPlaylistDebug('liked-api-not-login')
-    return { code: 200, ids: [] }
+    return { code: 200, ids: [], count: 0, likedId: null }
   }
   const session = getSession() || {}
   const uin = String(uid || session.uin || session.loginUin || '').replace(/^o/, '')
   if (!uin) {
     reportPlaylistDebug('liked-api-no-uin', { sessionKeys: Object.keys(session || {}) })
-    return { code: 200, ids: [] }
+    return { code: 200, ids: [], count: 0, likedId: null }
   }
 
   try {
     const res = await request({
-      url: '/user/getUserLikedSongs',
+      url: '/user/getUserDetail',
       method: 'get',
       params: { uin },
       silentError: true,
     })
     const data = unwrap(res)
-    reportPlaylistDebug('liked-api-response-shape', {
-      uin,
-      resKeys: Object.keys(res || {}),
-      dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-      dataDataKeys: data?.data && typeof data.data === 'object' ? Object.keys(data.data) : [],
-      responseDataKeys: data?.response?.data ? Object.keys(data.response.data) : [],
-      directLengths: {
-        dataSonglist: Array.isArray(data?.data?.songlist) ? data.data.songlist.length : null,
-        dataList: Array.isArray(data?.data?.list) ? data.data.list.length : null,
-        songlist: Array.isArray(data?.songlist) ? data.songlist.length : null,
-        list: Array.isArray(data?.list) ? data.list.length : null,
-        dataSongs: Array.isArray(data?.data?.songs) ? data.data.songs.length : null,
-        data: Array.isArray(data?.data) ? data.data.length : null,
-      },
+    const mymusic = data?.data?.mymusic || []
+    const liked = mymusic.find((item) => {
+      if (!item) return false
+      if (item.title && String(item.title).includes('喜欢')) return true
+      if (item.type === 1) return true
+      return false
     })
-    const list =
-      data?.data?.songlist ||
-      data?.data?.list ||
-      data?.response?.data?.songlist ||
-      data?.response?.data?.list ||
-      data?.songlist ||
-      data?.list ||
-      data?.data?.songs ||
-      data?.response?.data?.songs ||
-      data?.data ||
-      []
-    const songs = (Array.isArray(list) ? list : []).map(normalizeSong)
-    reportPlaylistDebug('liked-api-normalized', {
-      rawLength: Array.isArray(list) ? list.length : 0,
-      songsLength: songs.length,
-      sampleRawKeys: Object.keys((Array.isArray(list) ? list[0] : null) || {}),
-      sample: songs.slice(0, 3).map((item) => ({ id: item.id, name: item.name, songmid: item.songmid })),
+    const count = liked?.num0 ?? liked?.songnum ?? liked?.totalSongNum ?? 0
+    reportPlaylistDebug('liked-api-detail', {
+      uin,
+      mymusicLength: mymusic.length,
+      likedId: liked?.id,
+      likedTitle: liked?.title,
+      count,
     })
     return {
       code: 200,
-      ids: songs.map((s) => s.id).filter(Boolean),
-      songs,
+      ids: [],
+      songs: [],
+      count: Number(count) || 0,
+      likedId: liked?.id ? String(liked.id) : null,
     }
   } catch (error) {
     reportPlaylistDebug('liked-api-error', {
@@ -239,7 +223,7 @@ export async function getLikelist(uid) {
       status: error?.response?.status,
       data: error?.response?.data,
     })
-    return { code: 200, ids: [] }
+    return { code: 200, ids: [], count: 0, likedId: null }
   }
 }
 

@@ -88,7 +88,7 @@ function proxyToApi(req, res) {
 
 function startQqMusicApi() {
   return new Promise((resolve, reject) => {
-    const apiEntry = path.join(__dirname, 'node_modules', '@sansenjian', 'qq-music-api', 'dist', 'app.js')
+    const apiEntry = path.join(__dirname, 'server', 'qq-music-api.js')
     const child = spawn(process.execPath, [apiEntry], {
       cwd: __dirname,
       env: { ...process.env, PORT: String(API_PORT) },

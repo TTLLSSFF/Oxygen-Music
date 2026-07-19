@@ -1,6 +1,6 @@
 <script setup>
   import { ref, computed } from 'vue'
-  import dayjs from 'dayjs'
+  import { formatDate } from '../utils/date'
   import { useRouter } from 'vue-router'
   import { usePlayerStore } from '../store/playerStore';
 
@@ -10,7 +10,7 @@
 
   //专辑日期
   const publishTime = computed(() => (time) => {
-    return dayjs(time).format("YYYY-MM-DD")
+    return formatDate(time)
   })
 
   const checkAlbum = (albumId) => {

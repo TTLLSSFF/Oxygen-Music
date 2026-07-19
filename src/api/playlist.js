@@ -1,6 +1,20 @@
 import request from '../utils/request'
 import { normalizePlaylist, normalizeRank, normalizeSong, unwrap } from '../utils/qqNormalize'
-import { getLikelist, QQ_LIKED_PLAYLIST_ID } from './user'
+import { QQ_LIKED_PLAYLIST_ID } from './user'
+
+async function getLikedSongs() {
+  const res = await request({
+    url: '/liked-songs',
+    method: 'get',
+    silentError: true,
+  })
+  const data = unwrap(res) || res
+  return {
+    code: 200,
+    songs: (data?.songs || []).map(normalizeSong),
+    playlist: data?.playlist || null,
+  }
+}
 
 function extractSongList(data) {
   const cd = data?.cdlist?.[0] || data?.data?.cdlist?.[0]
@@ -140,15 +154,16 @@ export async function getTopList() {
 export async function getPlaylistDetail(params = {}) {
   const id = String(params.id || '')
   if (id === QQ_LIKED_PLAYLIST_ID) {
-    const liked = await getLikelist()
+    const liked = await getLikedSongs()
     const songs = liked.songs || []
+    const meta = liked.playlist || {}
     return {
       code: 200,
       playlist: {
         id,
-        name: '我喜欢',
-        coverImgUrl: songs[0]?.al?.picUrl || '',
-        picUrl: songs[0]?.al?.picUrl || '',
+        name: meta.name || '我喜欢',
+        coverImgUrl: meta.coverImgUrl || songs[0]?.al?.picUrl || '',
+        picUrl: meta.picUrl || songs[0]?.al?.picUrl || '',
         trackCount: songs.length,
         playCount: 0,
         description: 'QQ 音乐我喜欢的歌曲',
@@ -204,7 +219,7 @@ export async function getPlaylistDetail(params = {}) {
 export async function getPlaylistAll(params = {}) {
   const id = String(params.id || '')
   if (id === QQ_LIKED_PLAYLIST_ID) {
-    const liked = await getLikelist()
+    const liked = await getLikedSongs()
     const all = liked.songs || []
     const limitLiked = Number(params.limit || 1000)
     const offsetLiked = Number(params.offset || 0)
