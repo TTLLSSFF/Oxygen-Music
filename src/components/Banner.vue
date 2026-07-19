@@ -12,17 +12,27 @@
   const transitionTime = ref(0)
   const bannerTimer1 = ref(false)
   const bannerTimer2 = ref(false)
-  const bannerList = ref([{}])
+  const bannerList = ref([])
   const loading = ref(true)
+
+    function bannerSrc(item) {
+        if (!item) return ''
+        const src = item.imageUrl || item.pic || item.picUrl || item.cover || ''
+        if (!src) return ''
+        return src.includes('?') ? src : `${src}?param=720y280`
+    }
 
     async function loadData(type) {
         loading.value = true
         try {
             const bannerData = await getBanner(type)
-            if (bannerData && bannerData.banners) {
-                bannerList.value = bannerData.banners
+            if (bannerData && Array.isArray(bannerData.banners) && bannerData.banners.length) {
+                bannerList.value = bannerData.banners.filter((b) => bannerSrc(b))
+            } else {
+                bannerList.value = []
             }
         } catch (error) {
+            bannerList.value = []
             noticeOpen("获取轮播图失败", 2)
         } finally {
             loading.value = false
@@ -41,7 +51,6 @@
         clearInterval(timer1.value)
     })
 
-    //banner开始轮播
     function bannerStart() {
         clearInterval(timer1.value)
         timer1.value = setInterval(() => {
@@ -49,13 +58,12 @@
         }, 3000);
     }
 
-    //banner鼠标移入停止计时
     function bannerMouse(mouseEvent) {
         mouseEvent == true ? clearInterval(timer1.value) : bannerStart()
     }
 
-    //banner下一张
     function nextImg() {
+        if (!bannerList.value.length) return
         if(leftVal.value == (bannerList.value.length-1) * imgWidth.value) {
             transitionTime.value = 0.8
             leftVal.value += imgWidth.value
@@ -72,7 +80,6 @@
         bannerTimerFun()
     }
 
-    //banner下方选择条
     function imgSlect(index) {
         bannerTimerFun()
         bannerStart()
@@ -104,7 +111,6 @@
         }, 2900);
     }
 
-    //点击banner
     function bannerItem(item, index) {
         console.log("bannerClick")
     }
@@ -123,13 +129,14 @@
             </div>
         </div>
         <div class="banner-img" @mouseenter="bannerMouse(true)" @mouseleave="bannerMouse(false)">
-            <div class="img-box" :style="{left:`-${leftVal}vw`,transition:`${transitionTime}s`}">
-                <img @click="bannerItem(item, index)" v-for="(item, index) in bannerList" :src="(item.pic || item.imageUrl) + '?param=720y280'" alt="">
-                <img :src="(bannerList[0].pic || bannerList[0].imageUrl) + '?param=720y280'" alt="">
+            <div class="img-box" :style="{left:`-${leftVal}vw`,transition:`${transitionTime}s`}" v-if="bannerList.length">
+                <img @click="bannerItem(item, index)" v-for="(item, index) in bannerList" :key="'b'+index" :src="bannerSrc(item)" alt="">
+                <img :src="bannerSrc(bannerList[0])" alt="">
             </div>
+            <div class="banner-empty" v-else>暂无轮播图</div>
         </div>
-        <div class="selector-box">
-            <div @click="imgSlect(index)" class="selector" v-for="(item, index) in bannerList.length">
+        <div class="selector-box" v-if="bannerList.length">
+            <div @click="imgSlect(index)" class="selector" v-for="(item, index) in bannerList.length" :key="'s'+index">
                 <div :class="{'selector-style': true,'selector-style-active': currentIndex == index}"></div>
             </div>
         </div>
@@ -146,6 +153,16 @@
             height: 13.7vw;
             position: relative;
             overflow: hidden;
+            .banner-empty{
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: #f3f3f3;
+                color: #888;
+                font: 1.2vw SourceHanSansCN-Bold;
+            }
             .img-box{
                 width: 100%;
                 display: flex;

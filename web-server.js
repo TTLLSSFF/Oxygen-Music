@@ -1,13 +1,14 @@
-// 同时启动网易云音乐 API Enhanced 与静态文件服务，
-// 让 Web 部署只需一个命令即可运行。
-const http = require('http')
-const fs = require('fs')
-const path = require('path')
-const { pipeline } = require('stream')
-const startNeteaseMusicApi = require('./src/electron/services')
+// 同时启动 QQ 音乐 API 与静态文件服务，Web 部署只需一个命令。
+import http from 'http'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { pipeline } from 'stream'
+import { spawn } from 'child_process'
 
-const API_PORT = 36530
-const WEB_PORT = process.env.PORT || 30000
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const API_PORT = Number(process.env.QQ_MUSIC_API_PORT || process.env.API_PORT || 3200)
+const WEB_PORT = Number(process.env.PORT || 30000)
 const DIST_DIR = path.join(__dirname, 'dist')
 
 const mimeTypes = {
@@ -29,15 +30,14 @@ const mimeTypes = {
 }
 
 function serveStatic(req, res) {
-  let urlPath = req.url.split('?')[0]
-  let filePath = path.join(DIST_DIR, urlPath === '/' ? 'index.html' : urlPath)
+  const urlPath = req.url.split('?')[0]
+  const filePath = path.join(DIST_DIR, urlPath === '/' ? 'index.html' : urlPath)
   const ext = path.extname(filePath).toLowerCase()
   const contentType = mimeTypes[ext] || 'application/octet-stream'
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
-        // SPA 路由回退到 index.html
         fs.readFile(path.join(DIST_DIR, 'index.html'), (err2, content2) => {
           if (err2) {
             res.writeHead(404)
@@ -71,33 +71,69 @@ function proxyToApi(req, res) {
   }
 
   const proxyReq = http.request(options, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode, proxyRes.headers)
+    res.writeHead(proxyRes.statusCode || 502, proxyRes.headers)
     pipeline(proxyRes, res, () => {})
   })
 
   proxyReq.on('error', (err) => {
     console.error('API proxy error:', err)
-    res.writeHead(502)
-    res.end('API service unavailable')
+    if (!res.headersSent) {
+      res.writeHead(502)
+      res.end('API service unavailable')
+    }
   })
 
   pipeline(req, proxyReq, () => {})
 }
 
+function startQqMusicApi() {
+  return new Promise((resolve, reject) => {
+    const apiEntry = path.join(__dirname, 'node_modules', '@sansenjian', 'qq-music-api', 'dist', 'app.js')
+    const child = spawn(process.execPath, [apiEntry], {
+      cwd: __dirname,
+      env: { ...process.env, PORT: String(API_PORT) },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    let settled = false
+    const settleOk = () => {
+      if (settled) return
+      settled = true
+      resolve(child)
+    }
+    const settleFail = (error) => {
+      if (settled) return
+      settled = true
+      reject(error)
+    }
+
+    child.stdout.on('data', (buf) => {
+      const text = buf.toString()
+      process.stdout.write(text)
+      if (/server running|listening|localhost/i.test(text)) settleOk()
+    })
+    child.stderr.on('data', (buf) => process.stderr.write(buf.toString()))
+    child.on('error', settleFail)
+    child.on('exit', (code) => {
+      if (!settled) settleFail(new Error(`QQ Music API exited early with code ${code}`))
+    })
+
+    // 兜底：即使没有明确日志也继续
+    setTimeout(settleOk, 2500)
+  })
+}
+
 const server = http.createServer((req, res) => {
-  if (req.url.startsWith('/api/') || req.url === '/api') {
-    proxyToApi(req, res)
-  } else {
-    serveStatic(req, res)
-  }
+  if (req.url.startsWith('/api/') || req.url === '/api') proxyToApi(req, res)
+  else serveStatic(req, res)
 })
 
 ;(async () => {
   try {
-    await startNeteaseMusicApi()
-    console.log(`NetEase Cloud Music API Enhanced started on port ${API_PORT}`)
+    await startQqMusicApi()
+    console.log(`QQ Music API started on port ${API_PORT}`)
   } catch (error) {
-    console.error('Failed to start NetEase Cloud Music API:', error)
+    console.error('Failed to start QQ Music API:', error)
     process.exit(1)
   }
 

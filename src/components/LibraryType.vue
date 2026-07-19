@@ -15,7 +15,7 @@
   const { user } = storeToRefs(userStore)
   const libraryStore = useLibraryStore()
   const { changeLibraryList, updateUserPlaylistCount, updateUserPlaylist } = libraryStore
-  const { libraryList, libraryListAlbum, libraryListAritist, listType1, listType2 } = storeToRefs(libraryStore)
+  const { libraryList, libraryListAlbum, libraryListAritist, listType1, listType2, playlistUserSub } = storeToRefs(libraryStore)
   const localStore = useLocalStore()
 
   const typeTracker = ref(0)
@@ -25,32 +25,69 @@
   const typeThree = ref(0)
   const typeFour = ref(0)
 
+  function reportPlaylistDebug(event, payload = {}) {
+    try {
+      fetch('http://127.0.0.1:37901/log', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ event, payload }),
+      }).catch(() => {})
+    } catch (_) {}
+  }
+
 //   const typeList = [['我创建的','我收藏的'],['专辑','歌手','MV'],['正在下载','下载完成'],['全部','专辑','歌手']]
 //   const currentList = ref(typeList[0])
   changeTracker(0)
   async function loadUserPlaylist() {
+    if (!user.value?.userId) {
+      reportPlaylistDebug('library-type-no-user', { user: user.value })
+      libraryList.value = []
+      return
+    }
     let params = {
         uid: user.value.userId,
         limit: 500,
         offset: 0,
-        timestamp: new Date().getTime()
     }
-    await getUserPlaylistCount().then(listCount => {
-        updateUserPlaylistCount(listCount)
-        getUserPlaylist(params).then(list => {
-            updateUserPlaylist(list.playlist)
-            changeList()
-        })
-    })
+    try {
+      const list = await getUserPlaylist(params)
+      const playlists = list.playlist || []
+      const createdCount = playlists.filter((item) => item.qqPlaylistType === 'created').length
+      const subCount = playlists.filter((item) => item.qqPlaylistType !== 'created').length
+      reportPlaylistDebug('library-type-loaded', {
+        total: playlists.length,
+        createdCount,
+        subCount,
+        option: option.value,
+        typeOne: typeOne.value,
+        sample: playlists.slice(0, 3).map((item) => ({ id: item.id, name: item.name, trackCount: item.trackCount, qqPlaylistType: item.qqPlaylistType })),
+      })
+      updateUserPlaylistCount({ code: 200, createdPlaylistCount: createdCount, subPlaylistCount: subCount })
+      updateUserPlaylist(playlists)
+      changeList()
+    } catch (e) {
+      reportPlaylistDebug('library-type-error', { message: e?.message })
+      console.error(e)
+      libraryList.value = []
+    }
   }
 
   async function changeList() {
     if(option.value == 0 && typeOne.value == 0){//我创建的
         listType2.value = 0
         changeLibraryList(0)
-    } else if (option.value == 0 && typeOne.value == 1) {//我收藏的
+        reportPlaylistDebug('library-type-change-list', { branch: 'created', length: Array.isArray(libraryList.value) ? libraryList.value.length : null })
+    } else if (option.value == 0 && typeOne.value == 1) {//我喜欢
+        if (!playlistUserSub.value || playlistUserSub.value.length == 0) {
+          typeOne.value = 0
+          listType2.value = 0
+          changeLibraryList(0)
+          reportPlaylistDebug('library-type-change-list', { branch: 'collect-empty-fallback', length: Array.isArray(libraryList.value) ? libraryList.value.length : null })
+          return
+        }
         listType2.value = 1
         changeLibraryList(1)
+        reportPlaylistDebug('library-type-change-list', { branch: 'collect', length: Array.isArray(libraryList.value) ? libraryList.value.length : null })
     } else if (option.value == 1 && typeTwo.value == 0) {
         let params = {
             limit: 50,
@@ -143,7 +180,7 @@
         <div class="type-two">
             <div class="type-option">
                 <span v-show="option == 0" class="option" :class="{'option-selected': typeOne == 0}" @click="changeType(0)">我创建的</span>
-                <span v-show="option == 0" class="option" :class="{'option-selected': typeOne == 1}" @click="changeType(1)">我收藏的</span>
+                <span v-show="option == 0 && playlistUserSub && playlistUserSub.length" class="option" :class="{'option-selected': typeOne == 1}" @click="changeType(1)">我喜欢</span>
                 <span v-show="option == 1" class="option" :class="{'option-selected': typeTwo == 0}" @click="changeType(0)">专辑</span>
                 <span v-show="option == 1" class="option" :class="{'option-selected': typeTwo == 1}" @click="changeType(1)">歌手</span>
                 <span v-show="option == 1" class="option" :class="{'option-selected': typeTwo == 2}" @click="changeType(2)">MV</span>

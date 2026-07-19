@@ -17,7 +17,7 @@
   const lastRouter = ref(null)
   const router = useRouter()
   const showDetail = (selectedId, item) => {
-    if(listType1.value == 0) router.push('/mymusic/playlist/' + item.id)
+    if(listType1.value == 0) router.push('/mymusic/playlist/' + (item.disstid || item.dissid || item.id))
     if(listType1.value == 1 && listType2.value == 0) router.push('/mymusic/album/' + item.id)
     if(listType1.value == 1 && listType2.value == 1) router.push('/mymusic/artist/' + item.id)
     if(listType1.value == 1 && listType2.value == 2) {

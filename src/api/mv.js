@@ -1,63 +1,105 @@
-import request from "../utils/request";
+import request from '../utils/request'
+import { unwrap } from '../utils/qqNormalize'
 
 /**
- * 收藏的 MV 列表
- * 说明 : 调用此接口,可获取收藏的 MV 列表
- * @returns 
+ * 收藏 MV
  */
- export function getUserSubMV() {
-    return request({
-        url: '/mv/sublist',
-        method: 'get',
-        params: {
-            // timestamp: new Date().getTime(),
-        }
-    })
+export async function getUserSubMV() {
+  return { code: 200, data: [] }
 }
 
 /**
- * 说明 : 调用此接口 , 传入歌手 id, 可获得歌手 mv 信息 , 具体 mv 播放地址可调 用/mv传入此接口获得的 mvid 来拿到 , 
- * 如 : /artist/mv?id=6452,/mv?mvid=5461064
- * @returns 
+ * 歌手 MV
  */
- export function getArtistMV(params) {
-    return request({
-        url: '/artist/mv',
-        method: 'get',
-        params,
+export async function getArtistMV(params = {}) {
+  const id = String(params.id || '')
+  try {
+    const res = await request({
+      url: '/getSingerMv',
+      method: 'get',
+      params: {
+        singermid: id,
+        page: Math.floor((params.offset || 0) / (params.limit || 20)) + 1,
+        num: params.limit || 20,
+      },
     })
+    const data = unwrap(res)
+    const list = data?.data?.list || data?.list || data?.data?.mvlist || []
+    const mvs = (Array.isArray(list) ? list : []).map((item) => ({
+      id: item.vid || item.v_id || item.id,
+      name: item.title || item.name || item.mv_name,
+      imgurl: item.pic || item.picurl || item.cover || item.mv_pic_url,
+      artistName: item.singer_name || '',
+      playCount: item.playcnt || item.listennum || 0,
+      duration: (item.duration || 0) * 1000,
+    }))
+    return { code: 200, mvs }
+  } catch (_) {
+    return { code: 200, mvs: [] }
+  }
 }
 
 /**
- * 说明 : 调用此接口 , 传入 mvid ( 在搜索音乐的时候传 type=1004 获得 ) , 可获取对应 MV 数据 , 数据包含 mv 名字 , 歌手 , 发布时间 , mv 视频地址等数据 , 其中 mv 视频 网易做了防盗链处理 , 可能不能直接播放 , 需要播放的话需要调用 ' mv 地址' 接口
- * 必选参数 : mvid: mv 的 id
- * @param {*} mvid 
- * @returns 
+ * MV 详情
  */
- export function getMVDetail(id) {
-    return request({
-        url: '/mv/detail',
-        method: 'get',
-        params: {
-            mvid: id,
-        }
-    })
+export async function getMVDetail(id) {
+  const res = await request({
+    url: '/getMv',
+    method: 'get',
+    params: { vid: id },
+  })
+  const data = unwrap(res)
+  const info = data?.data || data || {}
+  const name = info.name || info.title || info.mvname || 'MV'
+  const cover = info.cover_pic || info.picurl || info.pic || info.cover || ''
+  const brs = [
+    { br: 720 },
+    { br: 1080 },
+  ]
+  return {
+    code: 200,
+    data: {
+      id,
+      name,
+      cover,
+      desc: info.desc || '',
+      artistName: info.singer_name || info.singerName || '',
+      brs,
+      duration: info.duration || 0,
+    },
+  }
 }
+
 /**
- * 说明 : 调用此接口 , 传入 mv id,可获取 mv 播放地址
- * 必选参数 : id: mv id
- * 可选参数 : r: 分辨率,默认 1080,可从 /mv/detail 接口获取分辨率列表
- * 接口地址 : /mv/url
- * @param {*} id 
- * @returns 
+ * MV 播放地址
  */
-export function getMVUrl(id, r) {
-    return request({
-        url: '/mv/url',
-        method: 'get',
-        params: {
-            id: id,
-            r: r,
-        }
+export async function getMVUrl(id, r = 720) {
+  try {
+    const res = await request({
+      url: '/getMvPlay',
+      method: 'get',
+      params: {
+        vid: id,
+        resolution: r,
+      },
     })
+    const data = unwrap(res)
+    const url =
+      data?.data?.url ||
+      data?.url ||
+      data?.data?.[id]?.url ||
+      data?.data?.mp4?.[0] ||
+      data?.mp4?.[0] ||
+      ''
+    return {
+      code: 200,
+      data: {
+        id,
+        url: typeof url === 'string' ? url : url?.freeflow_url?.[0] || url?.url || '',
+        r,
+      },
+    }
+  } catch (_) {
+    return { code: 200, data: { id, url: '', r } }
+  }
 }

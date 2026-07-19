@@ -1,25 +1,34 @@
 import pinia from '../store/pinia'
-import { useUserStore } from "../store/userStore"
-import { isLogin } from "./authority"
+import { useUserStore } from '../store/userStore'
+import { isLogin } from './authority'
 
 const userStore = useUserStore(pinia)
+
 function checkSongPlayable(song, _privilege) {
-  let privilege = _privilege;
-  if(privilege === undefined){
+  let privilege = _privilege
+  if (privilege === undefined) {
     privilege = song?.privilege
   }
 
   let status = {
     playable: true,
-    reason: ''
+    reason: '',
   }
-  if (song?.privilege?.pl > 0)
+
+  // QQ 源：默认认为可请求播放；真正失败在取链时处理
+  if (song?.type === 'qq' || song?.songmid) {
+    if (!song.songmid && !song.id) {
+      status.playable = false
+      status.reason = '缺少歌曲标识'
+    }
     return status
+  }
+
+  if (song?.privilege?.pl > 0) return status
 
   if (song.fee === 1 || privilege?.fee === 1) {
     status.vipOnly = true
-    // 非VIP会员
-    if (!(isLogin() && userStore.user.vipType === 11)) {
+    if (!(isLogin() && userStore.user?.vipType === 11)) {
       status.playable = false
       status.reason = '仅限 VIP 会员'
     }
@@ -29,19 +38,18 @@ function checkSongPlayable(song, _privilege) {
   } else if (song.noCopyrightRcmd !== null && song.noCopyrightRcmd !== undefined) {
     status.playable = false
     status.reason = '无版权'
-  } else if ( privilege?.st < 0 && isLogin()) {
+  } else if (privilege?.st < 0 && isLogin()) {
     status.playable = false
     status.reason = '已下架'
   }
   return status
 }
 
-// 只有调用 getPlaylistAll接口时，才需传入privileges数组
 export function mapSongsPlayableStatus(songs, privilegeList = []) {
-  if(songs?.length === undefined) return
+  if (songs?.length === undefined) return []
 
-  if(privilegeList.length === 0){
-    return songs.map(song => {
+  if (privilegeList.length === 0) {
+    return songs.map((song) => {
       Object.assign(song, { ...checkSongPlayable(song) })
       return song
     })

@@ -61,13 +61,18 @@
         setTitle("最新专辑", "NEWEST ALBUM")
         recommendationList.value = listData.albums
     } else if(recType == 3) {
-        const listData = await getTopList()
-        setTitle("排行榜", "TOP LIST")
-        //选取指定排行榜
-        let indexs = [0,3,8,11,15]
-        recommendationList.value = listData.list.filter((item,index) => {
-            return indexs.includes(index)
-        });;
+        try {
+          const listData = await getTopList()
+          setTitle("排行榜", "TOP LIST")
+          const list = Array.isArray(listData?.list) ? listData.list : []
+          let indexs = [0,3,8,11,15]
+          const picked = list.filter((item,index) => indexs.includes(index))
+          recommendationList.value = picked.length ? picked : list.slice(0, 5)
+        } catch (e) {
+          setTitle("排行榜", "TOP LIST")
+          recommendationList.value = []
+          console.error(e)
+        }
     }
     // console.log(recommendationList.value)
   }
@@ -100,7 +105,7 @@
     <div class="item-list">
         <div class="item" v-for="(item,index) in recommendationList">
             <div class="item-img" :class="recType == 1 ? 'item-img-circle' : 'item-img-sqaure'" @click="checkDetail(item.id)">
-                <img :src="(item.coverImgUrl || item.img1v1Url || item.picUrl) + '?param=450y450'" alt="">
+                <img :src="(item.coverImgUrl || item.img1v1Url || item.picUrl || '') + ((item.coverImgUrl || item.img1v1Url || item.picUrl || '').includes('?') ? '' : '?param=450y450')" alt="">
             </div>
             <div class="item-name" :class="{'item-name-center': recType == 1}">{{item.name}}</div>
             <div class="item-sub" @click="checkArtist(item.artist.id)" v-if="item.artist">{{ item.artist.name }}</div>

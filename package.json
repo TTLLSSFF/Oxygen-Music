@@ -1,34 +1,23 @@
 {
   "name": "oxygenmusic",
   "private": true,
-  "version": "0.6.2",
-  "main": "background.js",
+  "version": "0.7.0",
+  "description": "A pure web music player powered by QQ Music API",
   "author": "TTLLSSFF",
+  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:electron": "electron .",
-    "dev:all": "concurrently \"vite\" \"electron .\"",
-    "dev:web": "concurrently \"node -e \\\"require('./src/electron/services')()\\\"\" \"vite --mode web\"",
+    "dev": "concurrently -k \"npm:dev:api\" \"npm:dev:vite\"",
+    "dev:vite": "vite",
+    "dev:api": "node server/qq-music-api.js",
     "build": "vite build",
-    "build:web": "vite build --mode web",
     "preview": "vite preview",
-    "start": "nodemon --exec electron . --watch ./ --ext .html",
-    "dist": "vite build && electron-builder -p always",
-    "serve": "serve -s dist -l 30000",
-    "serve:web": "node web-server.js"
+    "serve": "node web-server.js"
   },
   "dependencies": {
-    "@neteasecloudmusicapienhanced/api": "^4.36.1",
+    "@sansenjian/qq-music-api": "^2.4.0",
     "axios": "^1.2.0",
-    "dayjs": "^1.11.6",
-    "electron-store": "^8.1.0",
-    "electron-updater": "^5.3.0",
-    "electron-win-state": "^1.1.22",
-    "fs-extra": "^11.1.0",
     "howler": "^2.2.3",
     "js-cookie": "^3.0.1",
-    "js-md5": "^0.7.3",
-    "music-metadata": "^7.13.0",
     "nanoid": "^3.3.4",
     "normalize.css": "^8.0.1",
     "pinia": "^2.0.23",
@@ -43,45 +32,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^3.2.0",
     "concurrently": "^8.0.0",
-    "electron": "^21.2.0",
-    "electron-builder": "^23.6.0",
-    "nodemon": "^2.0.20",
     "sass": "^1.56.1",
-    "serve": "^14.2.6",
     "vite": "^3.2.0"
-  },
-  "build": {
-    "productName": "Oxygen Music",
-    "appId": "114514",
-    "asar": true,
-    "directories": {
-      "output": "release/${version}"
-    },
-    "files": [],
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "mac": {
-      "category": ""
-    },
-    "win": {
-      "icon": "./src/assets/icon/icon.ico",
-      "target": [
-        "nsis",
-        "portable",
-        "zip"
-      ],
-      "verifyUpdateCodeSignature": false
-    },
-    "linux": {},
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "TTLLSSFF",
-        "repo": "Oxygen-Music",
-        "releaseType": "draft"
-      }
-    ]
   }
 }

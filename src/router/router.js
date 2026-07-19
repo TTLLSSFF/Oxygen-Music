@@ -2,7 +2,6 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { isLogin } from '../utils/authority'
 import { noticeOpen } from '../utils/dialog'
 import HomePage from '../views/HomePage.vue'
-import CloudDisk from '../views/CloudDisk.vue'
 import LoginPage from '../views/LoginPage.vue'
 import LoginContent from '../components/LoginContent.vue'
 import MyMusic from '../views/MyMusic.vue'
@@ -34,16 +33,12 @@ const routes = [
             else next()
         },
     },
-    {
-        path: '/cloud',
-        name: 'clouddisk',
-        component: CloudDisk,
-        beforeEnter: (to, from, next) => {
-            if(!userStore.cloudDiskPage) next({name: 'mymusic'})
-            else if(isLogin()) next()
-            else {next({name: 'login'});noticeOpen("请先登录", 2)}
-        },
-    },
+    // 云盘为网易云独占功能，QQ 源下禁用
+    // {
+    //     path: '/cloud',
+    //     name: 'clouddisk',
+    //     component: CloudDisk,
+    // },
     {
         path: '/login',
         name: 'login',

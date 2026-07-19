@@ -1,90 +1,101 @@
-import request from "../utils/request";
+import request from '../utils/request'
+import { normalizeAlbum, normalizeSong, unwrap } from '../utils/qqNormalize'
 
-/**
- * 登录后调用此接口 ,可获取全部新碟
- *可选参数 :
- *limit : 返回数量 , 默认为 30
- *offset : 偏移数量，用于分页 , 如 :( 页数 -1)*30, 其中 30 为 limit 的值 , 默认为 0
- *area : ALL:全部,ZH:华语,EA:欧美,KR:韩国,JP:日本
- */
- export function getNewAlbum(params) {
-    return request({
-        url: '/album/new',
-        method: 'get',
-        params,
-    })
+function extractAlbumSongs(data) {
+  return (
+    data?.data?.list ||
+    data?.list ||
+    data?.data?.songlist ||
+    data?.songlist ||
+    data?.data?.songs ||
+    data?.getSongInfo ||
+    []
+  )
 }
 
 /**
- * 调用此接口 ，获取云音乐首页新碟上架数据
+ * 新碟
  */
- export function getNewestAlbum(params) {
-    return request({
-        url: '/album/newest',
-        method: 'get',
-        params
-    })
+export async function getNewAlbum(params = {}) {
+  const res = await request({
+    url: '/getNewDisks',
+    method: 'get',
+    params: {
+      page: Math.floor((params.offset || 0) / (params.limit || 30)) + 1,
+      limit: params.limit || 30,
+    },
+  })
+  const data = unwrap(res)
+  const list =
+    data?.data?.list ||
+    data?.data?.albums ||
+    data?.new_album?.data?.albums ||
+    data?.albums ||
+    data?.list ||
+    []
+  return {
+    code: 200,
+    albums: (Array.isArray(list) ? list : []).map(normalizeAlbum),
+  }
+}
+
+export async function getNewestAlbum(params = {}) {
+  return getNewAlbum({ ...params, limit: params.limit || 10 })
+}
+
+export async function getUserSubAlbum() {
+  return { code: 200, data: [] }
 }
 
 /**
- * 说明 : 调用此接口 , 可获得已收藏专辑列表
- * 可选参数 :
- * limit: 取出数量 , 默认为 25
- * offset: 偏移数量 , 用于分页 , 如 :( 页数 -1)*25, 其中 25 为 limit 的值 , 默认 为 0
- * @param {*} params 
- * @returns 
+ * 专辑详情
  */
- export function getUserSubAlbum(params) {
-    return request({
-        url: '/album/sublist',
-        method: 'get',
-        params,
+export async function getAlbumDetail(params = {}) {
+  const id = String(params.id || '')
+  const res = await request({
+    url: '/getAlbumInfo',
+    method: 'get',
+    params: {
+      albummid: id,
+      albumId: id,
+    },
+  })
+  const data = unwrap(res)
+  const info = data?.data || data || {}
+  const album = normalizeAlbum({
+    ...info,
+    albummid: info.mid || info.albummid || id,
+    albumname: info.name || info.albumname || info.title,
+    company: info.company,
+    desc: info.desc,
+    aDate: info.aDate || info.publicTime,
+  })
+  const songs = extractAlbumSongs(info).map((item) =>
+    normalizeSong({
+      ...item,
+      albummid: album.mid,
+      albumname: album.name,
     })
+  )
+  return {
+    code: 200,
+    album,
+    songs,
+  }
 }
 
-/**
- * 说明 : 调用此接口 , 传入专辑 id, 可获得专辑内容
- * 必选参数 : id: 专辑 id
- * @param {*} params 
- * @returns 
- */
- export function getAlbumDetail(params) {
-    return request({
-        url: '/album',
-        method: 'get',
-        params,
-    })
+export async function subAlbum() {
+  return { code: 200, message: 'QQ 源暂不支持收藏专辑' }
 }
 
-/**
- * 说明 : 调用此接口,可收藏/取消收藏专辑
- * 必选参数 :
- * id : 专辑 id
- * t : 1 为收藏,其他为取消收藏
- * @param {*} params 
- * @returns 
- */
- export function subAlbum(params) {
-    return request({
-        url: '/album/sub',
-        method: 'get',
-        params,
-    })
-}
-
-/**
- * 说明 : 调用此接口 , 传入专辑 id, 可获得专辑动态信息,如是否收藏,收藏数,评论数,分享数
- * 必选参数 : id: 专辑 id
- * @param {*} params 
- * @returns 
- */
- export function albumDynamic(id) {
-    return request({
-        url: '/album/detail/dynamic',
-        method: 'get',
-        params: {
-            id: id,
-            timestamp: new Date().getTime(),
-        }
-    })
+export async function albumDynamic(id) {
+  return {
+    code: 200,
+    isSub: false,
+    subTime: 0,
+    commentCount: 0,
+    likedCount: 0,
+    shareCount: 0,
+    id,
+  }
 }

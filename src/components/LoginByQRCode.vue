@@ -3,7 +3,7 @@
   import DataCheckAnimaton from './DataCheckAnimaton.vue'
   import QRCode from 'qrcode'
   import { getQRcode, checkQRcodeStatus } from '../api/login'
-  import { onBeforeRouteLeave } from 'vue-router';
+  import { onBeforeRouteLeave } from 'vue-router'
   import { loginHandle } from '../utils/handle'
   import { noticeOpen } from '../utils/dialog'
 
@@ -11,6 +11,7 @@
   const firstLoadMode = ref(props.firstLoadMode)
   const loging = ref(-1)
   const qrKey = ref(null)
+  const qrMeta = ref({ ptqrtoken: '', qrsig: '' })
   const qrcodeImg = ref(null)
   const qrStatus = ref(null)
   const statusTitle = ref(null)
@@ -23,299 +24,335 @@
   })
 
   //初次加载页面获取QRcode
-  if(firstLoadMode.value == 0) {
+  if (firstLoadMode.value == 0) {
     loadData()
   }
   const checkQR = () => {
     clearInterval(checkQRInterval.value)
-    if(firstLoadMode.value == 1) {
-        firstLoadMode.value = 0
-        loadData()
+    if (firstLoadMode.value == 1) {
+      firstLoadMode.value = 0
+      loadData()
     }
     checkQRInterval.value = setInterval(() => {
-        checkQRcode()
-    }, 1000);
+      checkQRcode()
+    }, 1500)
   }
   const clearTimer = () => {
     clearInterval(checkQRInterval.value)
   }
-  defineExpose({checkQR,clearTimer})
+  defineExpose({ checkQR, clearTimer })
 
-  watch(() => qrStatus.value, (newVal,oldVal) => {
-    if(newVal == 800) {
+  watch(
+    () => qrStatus.value,
+    (newVal) => {
+      if (newVal == 800) {
         statusTitle.value = '二维码过期,点击刷新'
         statusTitleEN.value = 'ERROR'
         loging.value = -1
-    }
-    else if(newVal == 802) {
+      } else if (newVal == 802) {
         statusTitle.value = '请确认登录'
         statusTitleEN.value = 'CONFIRM'
         loging.value = 1
-    } else if(newVal == 803) {
+      } else if (newVal == 803) {
         statusTitleEN.value = 'LOGING...'
         loging.value = 2
+      }
     }
-  })
+  )
 
   async function loadData() {
-      try {
-        const result = await getQRcode()
-        if (!result || !result.data || !result.data.unikey) {
-            noticeOpen('获取二维码失败，请检查网络连接', 2)
-            return
-        }
-        qrKey.value = result.data.unikey
-        const loginUrl = `https://music.163.com/login?codekey=${qrKey.value}`
-        let opts = {
-            errorCorrectionLevel: 'Q',
-            type: "image/png",
-            width: 192,
-            height: 192,
-            color: {
-                dark: "#000000",
-                light: "#00000000"
-            }
-        };
-        QRCode.toDataURL(loginUrl, opts, (err, url) => {
-            if(err) {
-                console.error('生成二维码图片失败:', err)
-                noticeOpen('生成二维码失败', 2)
-                return
-            }
-            qrcodeImg.value = url
-        })
-        checkQR()
-      } catch(error) {
+    try {
+      const result = await getQRcode()
+      if (!result || !result.data) {
         noticeOpen('获取二维码失败，请检查网络连接', 2)
-        console.error('获取二维码失败:', error)
+        return
       }
+      qrKey.value = result.data.unikey
+      qrMeta.value = {
+        ptqrtoken: result.data.ptqrtoken,
+        qrsig: result.data.qrsig,
+      }
+
+      // QQ API 直接返回 base64 图片时优先使用
+      if (result.data.img) {
+        const img = result.data.img
+        qrcodeImg.value = img.startsWith('data:') ? img : `data:image/png;base64,${img}`
+        checkQR()
+        return
+      }
+
+      // 否则用 ptqrtoken 生成二维码（兼容兜底）
+      const loginUrl = result.data.loginUrl || `https://ssl.ptlogin2.qq.com/ptqrshow?appid=716027609&e=2&l=M&s=3&d=72&v=4&t=${Date.now()}`
+      let opts = {
+        errorCorrectionLevel: 'Q',
+        type: 'image/png',
+        width: 192,
+        height: 192,
+        color: {
+          dark: '#000000',
+          light: '#00000000',
+        },
+      }
+      QRCode.toDataURL(loginUrl, opts, (err, url) => {
+        if (err) {
+          console.error('生成二维码图片失败:', err)
+          noticeOpen('生成二维码失败', 2)
+          return
+        }
+        qrcodeImg.value = url
+      })
+      checkQR()
+    } catch (error) {
+      noticeOpen('获取二维码失败，请检查网络连接', 2)
+      console.error('获取二维码失败:', error)
+    }
   }
 
   const checkQRcode = () => {
-    if(qrKey.value == null) return
-    checkQRcodeStatus(qrKey.value).then(result => {
-        if(!result) return
-        if(result.code === 800) {
-            qrStatus.value = 800
-            console.log("二维码过期")
-        } else if(result.code === 801) {
-            qrStatus.value = 801
-            console.log("等待扫码")
-        } else if(result.code === 802) {
-            qrStatus.value = 802
-            console.log("待确认")
-        } else if(result.code === 803) {
-            qrStatus.value = 803
-            clearInterval(checkQRInterval.value)
-            loginHandle(result, 'qr')
-            emits('jumpTo')
-            console.log("授权登录成功")
+    if (qrKey.value == null) return
+    checkQRcodeStatus(qrKey.value, qrMeta.value)
+      .then((result) => {
+        if (!result) return
+        if (result.code === 800) {
+          qrStatus.value = 800
+          clearInterval(checkQRInterval.value)
+        } else if (result.code === 801) {
+          qrStatus.value = 801
+        } else if (result.code === 802) {
+          qrStatus.value = 802
+        } else if (result.code === 803) {
+          qrStatus.value = 803
+          clearInterval(checkQRInterval.value)
+          loginHandle(result, 'qr')
+          emits('jumpTo')
         }
-    }).catch(error => {
+      })
+      .catch((error) => {
         console.error('检查二维码状态失败:', error)
-    })
+        // 网络抖动时不立刻刷新，保留当前二维码继续轮询
+      })
   }
 
   const checkStatus = () => {
-    if(qrStatus.value == 802) {
-        loging.value = -2
-        loadData()
+    if (qrStatus.value == 802) {
+      loging.value = -2
+      loadData()
     }
-    if(qrStatus.value == 800) {
-        loging.value = -2
-        loadData()
+    if (qrStatus.value == 800) {
+      loging.value = -2
+      loadData()
     }
   }
 </script>
 
 <template>
   <div class="qrcode-container" @click="checkStatus()">
-        <div class="qrcode-border" :class="{'qrcode-loging-1': loging == 1, 'qrcode-loging-1 qrcode-loging-2': loging == 2}">
-            <div class="qrcode" :class="{'qrcode-checking': loging == 2, 'qrcode-invalid': qrStatus == 800, 'qrcode-recover': loging == -2}">
-                <img :src="qrcodeImg" alt="" v-show="qrcodeImg">
-                <span class="qrcode-loading" v-show="!qrcodeImg">Loading...</span>
-            </div>
-            <div class="qrcode-status" :class="{'qrcode-checking': loging == 2, 'status-1': qrStatus == 800, 'status-2': qrStatus == 802, 'hide': loging == -2}">{{statusTitle}}</div>
-            <div class="border border1"></div>
-            <div class="border border2"></div>
-            <div class="border border3"></div>
-            <div class="border border4"></div>
-            <div class="line line1"></div>
-            <div class="line line2"></div>
-            <div class="line line3"></div>
-            <div class="line line4"></div>
-            <div class="qrcode-text">{{statusTitleEN}}</div>
-            <DataCheckAnimaton class="check-animation" v-show="loging == 2"></DataCheckAnimaton>
-        </div>
+    <div class="qrcode-border" :class="{ 'qrcode-loging-1': loging == 1, 'qrcode-loging-1 qrcode-loging-2': loging == 2 }">
+      <div class="qrcode" :class="{ 'qrcode-checking': loging == 2, 'qrcode-invalid': qrStatus == 800, 'qrcode-recover': loging == -2 }">
+        <img :src="qrcodeImg" alt="" v-show="qrcodeImg" />
+        <span class="qrcode-loading" v-show="!qrcodeImg">Loading...</span>
+      </div>
+      <div class="qrcode-status" :class="{ 'qrcode-checking': loging == 2, 'status-1': qrStatus == 800, 'status-2': qrStatus == 802, hide: loging == -2 }">{{ statusTitle }}</div>
+      <div class="border border1"></div>
+      <div class="border border2"></div>
+      <div class="border border3"></div>
+      <div class="border border4"></div>
+      <div class="line line1"></div>
+      <div class="line line2"></div>
+      <div class="line line3"></div>
+      <div class="line line4"></div>
+      <div class="qrcode-text">{{ statusTitleEN }}</div>
+      <DataCheckAnimaton class="check-animation" v-show="loging == 2"></DataCheckAnimaton>
     </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
-  .qrcode-container{
+  .qrcode-container {
     margin-top: 7vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    //////
-    &:hover{
-        cursor: pointer;
+    &:hover {
+      cursor: pointer;
     }
-    .qrcode-border{
-        width: 27.6vh;
-        height: 27.6vh;
-        position: relative;
+    .qrcode-border {
+      width: 27.6vh;
+      height: 27.6vh;
+      position: relative;
+      transition: 0.3s;
+      .qrcode {
+        width: 26vh;
+        height: 26vh;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        img {
+          width: 100%;
+          height: 100%;
+        }
+        .qrcode-loading {
+          font: 18px Gilroy-ExtraBold;
+          line-height: 26vh;
+        }
+      }
+      .qrcode-checking {
+        opacity: 0 !important;
+        transition: 0.2s 1s !important;
+      }
+      .qrcode-invalid {
+        opacity: 0.5;
         transition: 0.3s;
-        .qrcode{
-            width: 26vh;
-            height: 26vh;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            img{
-                width: 100%;
-                height: 100%;
-            }
-            .qrcode-loading{
-                font: 18px Gilroy-ExtraBold;
-                line-height: 26vh;
-            }
+      }
+      .qrcode-recover {
+        opacity: 1 !important;
+      }
+      .qrcode-status {
+        width: 0;
+        background-color: black;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font: 14px SourceHanSansCN-Bold;
+        color: rgba(255, 255, 255, 0);
+        white-space: nowrap;
+        opacity: 0;
+        transition: 0.3s;
+      }
+      .hide {
+        opacity: 0 !important;
+      }
+      .status-1 {
+        background-color: red;
+        animation: status 0.3s cubic-bezier(0.13, 0.86, 0.51, 0.98) forwards;
+      }
+      .status-2 {
+        background-color: black;
+        animation: status 0.3s cubic-bezier(0.13, 0.86, 0.51, 0.98) forwards;
+      }
+      @keyframes status {
+        0% {
+          opacity: 1;
         }
-        .qrcode-checking{
-            opacity: 0 !important;
-            transition: 0.2s 1s !important;
+        100% {
+          width: 100%;
+          opacity: 1;
+          color: rgba(255, 255, 255, 1);
         }
-        .qrcode-invalid{
-            opacity: 0.5;
-            transition: 0.3s;
-        }
-        .qrcode-recover{
-            opacity: 1 !important;
-        }
-        .qrcode-status{
-            width: 0;
-            background-color: black;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%,-50%);
-            font: 14px SourceHanSansCN-Bold;
-            color: rgba(255, 255, 255, 0);
-            white-space: nowrap;
-            opacity: 0;
-            transition: 0.3s;
-        }
-        .hide{
-            opacity: 0 !important;
-        }
-        .status-1{
-            background-color: red;
-            animation: status 0.3s cubic-bezier(.13,.86,.51,.98) forwards;
-        }
-        .status-2{
-            background-color: black;
-            animation: status 0.3s cubic-bezier(.13,.86,.51,.98) forwards;
-        }
-        @keyframes status {
-            0%{opacity: 1;}
-            100%{width: 100%;opacity: 1;color: rgba(255, 255, 255, 1);}
-        }
+      }
 
-        .border{
-            width: 40px;
-            height: 40px;
-            position: absolute
+      .border {
+        width: 40px;
+        height: 40px;
+        position: absolute;
+      }
+      $borderWidth: 2 + px;
+      .border1 {
+        border: {
+          top: $borderWidth solid black;
+          left: $borderWidth solid black;
         }
-        $borderWidth: 2 + px;
-        .border1{
-            border: {
-                top: $borderWidth solid black;
-                left: $borderWidth solid black;
-            }
-            top: 0;
-            left: 0;
+        top: 0;
+        left: 0;
+      }
+      .border2 {
+        border: {
+          top: $borderWidth solid black;
+          right: $borderWidth solid black;
         }
-        .border2{
-            border: {
-                top: $borderWidth solid black;
-                right: $borderWidth solid black;
-            }
-            top: 0;
-            right: 0;
+        top: 0;
+        right: 0;
+      }
+      .border3 {
+        border: {
+          bottom: $borderWidth solid black;
+          right: $borderWidth solid black;
         }
-        .border3{
-            border: {
-                bottom: $borderWidth solid black;
-                right: $borderWidth solid black;
-            }
-            bottom: 0;
-            right: 0;
+        bottom: 0;
+        right: 0;
+      }
+      .border4 {
+        border: {
+          bottom: $borderWidth solid black;
+          left: $borderWidth solid black;
         }
-        .border4{
-            border: {
-                bottom: $borderWidth solid black;
-                left: $borderWidth solid black;
-            }
-            bottom: 0;
-            left: 0;
-        }
-        .line{
-            width: 40px;
-            height: 1px;
-            background: linear-gradient(to right, rgb(0, 0, 0) 30%, rgba(0, 0, 0, 0.1));
-            position: absolute;
-        }
-        .line1{
-            top: -13px;
-            left: -32px;
-            transform: rotate(-135deg);
-        }
-        .line2{
-            top: -13px;
-            right: -32px;
-            transform: rotate(-45deg);
-        }
-        .line3{
-            bottom: -13px;
-            right: -32px;
-            transform: rotate(45deg);
-        }
-        .line4{
-            bottom: -13px;
-            left: -32px;
-            transform: rotate(135deg);
-        }
-        .qrcode-text{
-            font: 1vh Geometos;
-            color: black;
-            position: absolute;
-            top: -1.2vh;
-            left: 0.2vh;
-        }
-        .check-animation{
-            width: 100%;
-            height: 100%;
-            position: absolute;
-        }
+        bottom: 0;
+        left: 0;
+      }
+      .line {
+        width: 40px;
+        height: 1px;
+        background: linear-gradient(to right, rgb(0, 0, 0) 30%, rgba(0, 0, 0, 0.1));
+        position: absolute;
+      }
+      .line1 {
+        top: -13px;
+        left: -32px;
+        transform: rotate(-135deg);
+      }
+      .line2 {
+        top: -13px;
+        right: -32px;
+        transform: rotate(-45deg);
+      }
+      .line3 {
+        bottom: -13px;
+        right: -32px;
+        transform: rotate(45deg);
+      }
+      .line4 {
+        bottom: -13px;
+        left: -32px;
+        transform: rotate(135deg);
+      }
+      .qrcode-text {
+        font: 1vh Geometos;
+        color: black;
+        position: absolute;
+        top: -1.2vh;
+        left: 0.2vh;
+      }
+      .check-animation {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+      }
     }
-    .qrcode-loging-1{
-        width: 22vh;
-        height: 22vh;
-        transition: 0.2s ease;
+    .qrcode-loging-1 {
+      width: 22vh;
+      height: 22vh;
+      transition: 0.2s ease;
     }
-    .qrcode-loging-2{
-        .border, .line{
-            animation: qrcode-acticity 0.3s 0.2s forwards;
+    .qrcode-loging-2 {
+      .border,
+      .line {
+        animation: qrcode-acticity 0.3s 0.2s forwards;
+      }
+      @keyframes qrcode-acticity {
+        0% {
+          opacity: 0;
         }
-        @keyframes qrcode-acticity {
-            0%{opacity: 0;}
-            20%{opacity: 1;}
-            40%{opacity: 0;}
-            60%{opacity: 1;}
-            80%{opacity: 0;}
-            90%{opacity: 1;}
-            100%{opacity: 0;}
+        20% {
+          opacity: 1;
         }
+        40% {
+          opacity: 0;
+        }
+        60% {
+          opacity: 1;
+        }
+        80% {
+          opacity: 0;
+        }
+        90% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
     }
-}
+  }
 </style>

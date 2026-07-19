@@ -3,12 +3,14 @@
   import { useRouter } from 'vue-router';
   import { logout } from '../api/user'
   import { noticeOpen } from "../utils/dialog";
-  import { isLogin } from '../utils/authority'
+  import { clearLoginCookies, isLogin } from '../utils/authority'
   import { useUserStore } from '../store/userStore';
   import { toggleHeartMode } from '../utils/player'
 
   const router  =useRouter()
   const userStore = useUserStore()
+  // QQ 源无云盘，默认关闭
+  userStore.cloudDiskPage = false
   const isActive = ref(false)
   const toSettings = () => {
       router.push('/settings')
@@ -17,9 +19,9 @@
     if(isLogin()){
       logout().then(result => {
         if(result.code == 200) {
-            window.localStorage.clear()
+            clearLoginCookies()
             userStore.user = null
-            userStore.biliUser = null
+            userStore.likelist = []
             router.push('/')
             noticeOpen("已退出账号", 2)
         }

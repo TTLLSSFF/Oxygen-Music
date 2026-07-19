@@ -1,7 +1,6 @@
 import pinia from '../store/pinia'
-import { isLogin } from '../utils/authority'
+import { clearLoginCookies, isLogin } from '../utils/authority'
 import { loadLastSong } from './player'
-import { scanMusic } from './locaMusic'
 import { getUserProfile, getLikelist } from '../api/user'
 import { useUserStore } from '../store/userStore'
 import { usePlayerStore } from '../store/playerStore'
@@ -16,91 +15,106 @@ const { quality, lyricSize, tlyricSize, rlyricSize, lyricInterludeTime } = store
 const localSotre = useLocalStore()
 const { updateUser } = userStore
 
+const DEFAULT_SETTINGS = {
+  music: {
+    level: 'standard',
+    lyricSize: '20',
+    tlyricSize: '14',
+    rlyricSize: '12',
+    lyricInterlude: 13,
+  },
+  local: {
+    downloadFolder: '',
+    localFolder: [],
+  },
+  other: {
+    quitApp: 'minimize',
+    customFont: '',
+  },
+}
+
+function applySettings(settings) {
+  const s = settings || DEFAULT_SETTINGS
+  quality.value = s.music?.level || 'standard'
+  lyricSize.value = s.music?.lyricSize || '20'
+  tlyricSize.value = s.music?.tlyricSize || '14'
+  rlyricSize.value = s.music?.rlyricSize || '12'
+  lyricInterludeTime.value = s.music?.lyricInterlude || 13
+  localSotre.downloadedFolderSettings = s.local?.downloadFolder || null
+  localSotre.localFolderSettings = s.local?.localFolder || []
+  localSotre.quitApp = s.other?.quitApp || 'minimize'
+  if (s.other?.customFont) insertCustomFontStyle(s.other.customFont)
+}
+
 export const initSettings = () => {
-    return new Promise((resolve) => {
-        windowApi.getSettings().then(settings => {
-            if (settings) {
-                quality.value = settings.music.level
-                lyricSize.value = settings.music.lyricSize
-                tlyricSize.value = settings.music.tlyricSize
-                rlyricSize.value = settings.music.rlyricSize
-                lyricInterludeTime.value = settings.music.lyricInterlude
-                localSotre.downloadedFolderSettings = settings.local.downloadFolder
-                localSotre.localFolderSettings = settings.local.localFolder
-                localSotre.quitApp = settings.other.quitApp
-                if (localSotre.downloadedFolderSettings && !localSotre.downloadedMusicFolder) {
-                    scanMusic({ type: 'downloaded', refresh: false })
-                }
-                if (localSotre.localFolderSettings.length != 0 && !localSotre.localMusicFolder) {
-                    scanMusic({ type: 'local', refresh: false })
-                }
-                if (!localSotre.downloadedFolderSettings && localSotre.downloadedMusicFolder) {
-                    localSotre.downloadedMusicFolder = null
-                    localSotre.downloadedFiles = null
-                    windowApi.clearLocalMusicData('downloaded')
-                }
-                if (localSotre.localFolderSettings.length == 0 && localSotre.localMusicFolder) {
-                    localSotre.localMusicFolder = null
-                    localSotre.localMusicList = null
-                    localSotre.localMusicClassify = null
-                    windowApi.clearLocalMusicData('local')
-                }
-                insertCustomFontStyle(settings.other.customFont)
-            }
-            // 设置未读取到配置时给默认值，避免 Web 模式下空值导致计算异常
-            quality.value = quality.value || 'standard'
-            lyricSize.value = lyricSize.value || '20'
-            tlyricSize.value = tlyricSize.value || '14'
-            rlyricSize.value = rlyricSize.value || '12'
-            lyricInterludeTime.value = lyricInterludeTime.value || 13
-            resolve()
-        }).catch(() => {
-            quality.value = quality.value || 'standard'
-            lyricSize.value = lyricSize.value || '20'
-            tlyricSize.value = tlyricSize.value || '14'
-            rlyricSize.value = rlyricSize.value || '12'
-            lyricInterludeTime.value = lyricInterludeTime.value || 13
-            resolve()
-        })
-    })
+  return new Promise((resolve) => {
+    const finish = (settings) => {
+      applySettings(settings)
+      resolve()
+    }
+
+    try {
+      const cached = localStorage.getItem('oxygen_settings')
+      if (cached) {
+        finish(JSON.parse(cached))
+        return
+      }
+    } catch (_) {}
+
+    const getter = window.windowApi?.getSettings
+    if (getter) {
+      Promise.resolve(getter())
+        .then((settings) => finish(settings || DEFAULT_SETTINGS))
+        .catch(() => finish(DEFAULT_SETTINGS))
+    } else {
+      finish(DEFAULT_SETTINGS)
+    }
+  })
 }
 
 export const getUserLikelist = () => {
-    if (userStore.user && userStore.user.userId) {
-        getLikelist(userStore.user.userId).then(result => {
-            if (result && result.ids) {
-                userStore.likelist = result.ids
-            }
-        }).catch(() => {
-            userStore.likelist = []
-        })
-    } else {
+  if (userStore.user && userStore.user.userId) {
+    getLikelist(userStore.user.userId)
+      .then((result) => {
+        if (result && result.ids) {
+          userStore.likelist = result.ids
+        }
+      })
+      .catch(() => {
         userStore.likelist = []
-    }
+      })
+  } else {
+    userStore.likelist = []
+  }
 }
 
 export const initUserInfo = () => {
-    return new Promise((resolve) => {
-        if (isLogin()) {
-            getUserProfile().then(result => {
-                if (result && result.profile) {
-                    updateUser(result.profile)
-                    getUserLikelist()
-                }
-                resolve()
-            }).catch(() => {
-                noticeOpen("获取用户信息失败", 2)
-                resolve()
-            })
-        } else {
-            window.localStorage.clear()
-            resolve()
-        }
-    })
+  return new Promise((resolve) => {
+    if (isLogin()) {
+      getUserProfile()
+        .then((result) => {
+          if (result && result.profile) {
+            updateUser(result.profile)
+            getUserLikelist()
+          }
+          resolve()
+        })
+        .catch(() => {
+          noticeOpen('获取用户信息失败', 2)
+          resolve()
+        })
+    } else {
+      // 仅清理登录态，避免清空整个 localStorage 导致设置/播放列表丢失
+      clearLoginCookies()
+      userStore.user = null
+      userStore.likelist = []
+      resolve()
+    }
+  })
 }
 
 export const init = async () => {
-    await initSettings()
-    loadLastSong()
-    await initUserInfo()
+  await initSettings()
+  loadLastSong()
+  await initUserInfo()
 }

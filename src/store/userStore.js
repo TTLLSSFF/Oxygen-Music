@@ -9,7 +9,7 @@ export const useUserStore = defineStore('userStore', {
             appOptionShow: false,
             biliUser: null,
             homePage: true,
-            cloudDiskPage: true,
+            cloudDiskPage: false,
         }
     },
     actions: {

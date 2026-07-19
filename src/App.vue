@@ -27,10 +27,12 @@
     }
   }
 
-  windowApi.checkUpdate((event, version) => {
-    otherStore.toUpdate = true
-    otherStore.newVersion = version
-  })
+  if (typeof window !== 'undefined' && window.windowApi?.checkUpdate) {
+    window.windowApi.checkUpdate((event, version) => {
+      otherStore.toUpdate = true
+      otherStore.newVersion = version
+    })
+  }
 </script>
 
 <template>
